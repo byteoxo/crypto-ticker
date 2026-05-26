@@ -115,7 +115,7 @@ func consumeOKXWS(ctx context.Context, cfg config, state *appState, notify func(
 	}
 	chartInterval := getChartInterval()
 
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.Timeout}
+	dialer := newWSDialer(cfg.Timeout)
 	connPub, _, err := dialer.DialContext(ctx, cfg.WSBase, nil)
 	if err != nil {
 		return fmt.Errorf("dial okx websocket: %w", err)
@@ -504,7 +504,7 @@ func consumeOKXSpotWS(ctx context.Context, cfg config, state *appState, notify f
 	}
 	chartInterval := getChartInterval()
 
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.Timeout}
+	dialer := newWSDialer(cfg.Timeout)
 	connPub, _, err := dialer.DialContext(ctx, wsBase, nil)
 	if err != nil {
 		return fmt.Errorf("dial okx spot websocket: %w", err)

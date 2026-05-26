@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,13 @@ var (
 	netErrClosed   = errors.New("use of closed network connection")
 	errResubscribe = errors.New("market stream resubscribe requested")
 )
+
+func newWSDialer(timeout time.Duration) websocket.Dialer {
+	return websocket.Dialer{
+		HandshakeTimeout: timeout,
+		Proxy:            http.ProxyFromEnvironment,
+	}
+}
 
 func runWSLoop(ctx context.Context, cfg config, state *appState, notify func(), getChartSymbol func() string, getChartInterval func() string, getTickerSymbols func() []string, isSpotChartSymbol func(string) bool) error {
 	switch {
@@ -59,7 +67,7 @@ func consumeWS(ctx context.Context, cfg config, state *appState, notify func(), 
 	}
 	chartInterval := getChartInterval()
 	endpoint := buildWSURL(cfg.WSBase, getTickerSymbols(), chartSymbol, chartInterval)
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.Timeout}
+	dialer := newWSDialer(cfg.Timeout)
 	conn, _, err := dialer.DialContext(ctx, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("dial websocket: %w", err)
@@ -206,7 +214,7 @@ func consumeSpotWS(ctx context.Context, cfg config, state *appState, notify func
 	}
 	chartInterval := getChartInterval()
 	endpoint := buildWSURL(wsBase, getSpotTickerSymbols(), chartSymbol, chartInterval)
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.Timeout}
+	dialer := newWSDialer(cfg.Timeout)
 	conn, _, err := dialer.DialContext(ctx, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("dial spot websocket: %w", err)

@@ -62,7 +62,7 @@ func runUserDataLoop(ctx context.Context, client *http.Client, cfg config, state
 
 func consumeUserDataStream(ctx context.Context, client *http.Client, cfg config, state *appState, notify func(), listenKey string) error {
 	endpoint := binanceFuturesPrivateUserDataURL(cfg.WSBase, listenKey)
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.Timeout}
+	dialer := newWSDialer(cfg.Timeout)
 	conn, _, err := dialer.DialContext(ctx, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("dial user data websocket: %w", err)
@@ -168,7 +168,7 @@ func runSpotUserDataLoop(ctx context.Context, client *http.Client, cfg config, s
 
 func consumeSpotUserDataStream(ctx context.Context, client *http.Client, cfg config, state *appState, notify func()) error {
 	endpoint := defaultSpotWSAPIBaseURL
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.Timeout}
+	dialer := newWSDialer(cfg.Timeout)
 	conn, _, err := dialer.DialContext(ctx, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("dial spot user data websocket api: %w", err)

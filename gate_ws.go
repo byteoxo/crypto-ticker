@@ -120,7 +120,7 @@ func consumeGateWS(ctx context.Context, cfg config, state *appState, notify func
 	}
 	chartInterval := getChartInterval()
 
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.Timeout}
+	dialer := newWSDialer(cfg.Timeout)
 	conn, _, err := dialer.DialContext(ctx, cfg.WSBase, nil)
 	if err != nil {
 		return fmt.Errorf("dial gate websocket: %w", err)
@@ -273,7 +273,7 @@ func consumeGateSpotWS(ctx context.Context, cfg config, state *appState, notify 
 	}
 	chartInterval := getChartInterval()
 
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.Timeout}
+	dialer := newWSDialer(cfg.Timeout)
 	conn, _, err := dialer.DialContext(ctx, wsBase, nil)
 	if err != nil {
 		return fmt.Errorf("dial gate spot websocket: %w", err)
