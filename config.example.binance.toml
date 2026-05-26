@@ -1,0 +1,33 @@
+# Binance USDⓈ-M futures + spot — copy to config.toml (or ~/.config/crypto-ticker/config.toml).
+#
+# Futures symbols use compact pairs: BTCUSDT, ETHUSDT (underscores are stripped if present).
+# Spot rows accept a base asset (BTC → BTCUSDT) or a full pair (ETHUSDT).
+#
+# API keys are optional for market data only. Set api_key/api_secret (or env vars below)
+# to enable positions, balances, and order management.
+
+exchange = "binance"
+
+symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+spot_symbols = ["BTC", "ETH"]
+chart_symbol = "BTCUSDT"
+chart_limit = 48
+default_panel = "futures"
+timeout = "8s"
+tz = "Asia/Shanghai"
+
+# Defaults when omitted (futures panel):
+# rest_base = "https://fapi.binance.com"
+# ws_base   = "wss://fstream.binance.com/market"
+#
+# Spot panel always uses Binance spot endpoints (not configurable here):
+# REST https://api.binance.com  |  WS wss://stream.binance.com:9443
+#
+# Legacy ws_base "wss://fstream.binance.com" is auto-mapped to .../market for ticker/kline streams.
+
+no_color = false
+retry_delay = "2s"
+
+# Optional — override via BINANCE_API_KEY and BINANCE_API_SECRET (env wins over file).
+api_key = ""
+api_secret = ""
