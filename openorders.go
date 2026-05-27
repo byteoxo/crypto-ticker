@@ -533,6 +533,14 @@ func fetchOpenOrders(ctx context.Context, client *http.Client, cfg config) (futu
 		s, e2 := fetchOKXPendingOrders(ctx, client, cfg, "SPOT")
 		return f, s, e2
 	}
+	if cfg.isBitget() {
+		f, e := fetchBitgetPendingOrders(ctx, client, cfg, panelFutures)
+		if e != nil {
+			return nil, nil, e
+		}
+		s, e2 := fetchBitgetPendingOrders(ctx, client, cfg, panelSpot)
+		return f, s, e2
+	}
 	f, e1 := fetchBinanceFuturesOpenOrders(ctx, client, cfg)
 	if e1 != nil {
 		return nil, nil, e1
@@ -735,6 +743,9 @@ func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 	case ui.cfg.isOKX():
 		exchangeLabel = "OKX"
 		spotSectionTitle = "OKX Spot"
+	case ui.cfg.isBitget():
+		exchangeLabel = "Bitget"
+		spotSectionTitle = "Bitget Spot"
 	}
 	dataStart := renderSection(exchangeLabel+" Futures", futures)
 	ui.openOrdersData = futures
@@ -820,12 +831,12 @@ func (ui *uiModel) showNewOrderForm() {
 	dropdownReady = true
 	form.GetFormItem(1).(*tview.DropDown).SetListStyles(unselectedStyle, selectedStyle)
 
-	if ui.cfg.isGate() || ui.cfg.isOKX() {
+	if ui.cfg.isGate() || ui.cfg.isOKX() || ui.cfg.isBitget() {
 		form.AddInputField("Price", "", 20, numFilter, nil)
 		sizeInputFilter := func(_ string, ch rune) bool {
 			return ch >= '0' && ch <= '9'
 		}
-		if ui.cfg.isOKX() {
+		if ui.cfg.isOKX() || ui.cfg.isBitget() {
 			sizeInputFilter = numFilter
 		}
 		form.AddInputField("Size", "1", 15, sizeInputFilter, nil)
@@ -858,7 +869,7 @@ func (ui *uiModel) showNewOrderForm() {
 						sizeVal = -sizeVal
 					}
 					_, err = placeGateFuturesLimitOrder(context.Background(), client, ui.cfg, contract, sizeVal, priceStr)
-				} else {
+				} else if ui.cfg.isOKX() {
 					if _, err2 := strconv.ParseFloat(rawSize, 64); err2 != nil {
 						ui.app.QueueUpdateDraw(func() {
 							ui.renderOpenOrdersError("place order: invalid size")
@@ -871,6 +882,19 @@ func (ui *uiModel) showNewOrderForm() {
 						side = "SELL"
 					}
 					_, err = placeOKXFuturesLimitOrder(context.Background(), client, ui.cfg, contract, side, priceStr, rawSize)
+				} else {
+					if _, err2 := strconv.ParseFloat(rawSize, 64); err2 != nil {
+						ui.app.QueueUpdateDraw(func() {
+							ui.renderOpenOrdersError("place order: invalid size")
+							ui.resetOpenOrdersHint()
+						})
+						return
+					}
+					side := "BUY"
+					if sideIdx == 1 {
+						side = "SELL"
+					}
+					_, err = placeBitgetFuturesLimitOrder(context.Background(), client, ui.cfg, contract, side, priceStr, rawSize)
 				}
 				if err != nil {
 					ui.app.QueueUpdateDraw(func() {
@@ -951,7 +975,7 @@ func (ui *uiModel) showNewOrderForm() {
 	form.AddButton("Cancel", func() { ui.closeOrderForm() })
 	title := " New Limit Order "
 	formHeight := 15
-	if !ui.cfg.isGate() && !ui.cfg.isOKX() {
+	if !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget() {
 		title = " New Order "
 		formHeight = 21
 	}
@@ -998,6 +1022,8 @@ func (ui *uiModel) showCancelOrderConfirm() {
 					}
 				} else if ui.cfg.isOKX() {
 					err = cancelOKXFuturesOrder(context.Background(), client, ui.cfg, order.Symbol, order.OrderID)
+				} else if ui.cfg.isBitget() {
+					err = cancelBitgetFuturesOrder(context.Background(), client, ui.cfg, order.Symbol, order.OrderID)
 				} else {
 					err = cancelBinanceFuturesOrder(context.Background(), client, ui.cfg, order.Symbol, order.OrderID)
 				}
@@ -1036,7 +1062,7 @@ func (ui *uiModel) showEditPriceForm() {
 
 	form := tview.NewForm()
 	form.AddInputField("New Price", formatCompactFloat(order.Price), 20, numFilter, nil)
-	if !ui.cfg.isGate() && !ui.cfg.isOKX() {
+	if !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget() {
 		form.AddInputField("New Quantity", formatCompactFloat(order.OrigQty), 20, numFilter, nil)
 	}
 	form.AddButton("Submit", func() {
@@ -1045,7 +1071,7 @@ func (ui *uiModel) showEditPriceForm() {
 			return
 		}
 		var newQty string
-		if !ui.cfg.isGate() && !ui.cfg.isOKX() {
+		if !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget() {
 			newQty = strings.TrimSpace(form.GetFormItem(1).(*tview.InputField).GetText())
 			if _, err := strconv.ParseFloat(newQty, 64); err != nil {
 				return
@@ -1062,6 +1088,8 @@ func (ui *uiModel) showEditPriceForm() {
 				err = amendGateFuturesOrderPrice(context.Background(), client, ui.cfg, order.OrderID, newPrice)
 			} else if ui.cfg.isOKX() {
 				err = amendOKXFuturesOrderPrice(context.Background(), client, ui.cfg, order.Symbol, order.OrderID, newPrice)
+			} else if ui.cfg.isBitget() {
+				err = amendBitgetFuturesOrderPrice(context.Background(), client, ui.cfg, order.Symbol, order.OrderID, newPrice)
 			} else {
 				err = amendBinanceFuturesOrder(context.Background(), client, ui.cfg, order.Symbol, order.OrderID, order.Side, newQty, newPrice)
 			}
@@ -1088,7 +1116,7 @@ func (ui *uiModel) showEditPriceForm() {
 	form.SetBackgroundColor(tcell.ColorDefault)
 
 	formHeight := 9
-	if !ui.cfg.isGate() && !ui.cfg.isOKX() {
+	if !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget() {
 		formHeight = 11
 	}
 

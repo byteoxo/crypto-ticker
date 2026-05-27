@@ -103,6 +103,8 @@ func loadInitialPositions(ctx context.Context, client *http.Client, cfg config, 
 		positions, err = fetchGatePositions(ctx, client, cfg)
 	case cfg.isOKX():
 		positions, err = fetchOKXPositions(ctx, client, cfg)
+	case cfg.isBitget():
+		positions, err = fetchBitgetPositions(ctx, client, cfg)
 	default:
 		positions, err = fetchPositions(ctx, client, cfg)
 	}
@@ -248,6 +250,9 @@ func fetchSpotBalances(ctx context.Context, client *http.Client, cfg config) ([]
 	if cfg.isOKX() {
 		return fetchOKXSpotBalances(ctx, client, cfg)
 	}
+	if cfg.isBitget() {
+		return fetchBitgetSpotBalances(ctx, client, cfg)
+	}
 	query := url.Values{}
 	query.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
 	query.Set("recvWindow", strconv.FormatInt(int64(cfg.Timeout/time.Millisecond), 10))
@@ -340,6 +345,9 @@ func fetchKlines(ctx context.Context, client *http.Client, baseURL, symbol, inte
 	}
 	if isOKXBaseURL(baseURL) {
 		return fetchKlinesOKX(ctx, client, baseURL, symbol, interval, limit, panel)
+	}
+	if isBitgetBaseURL(baseURL) {
+		return fetchKlinesBitget(ctx, client, baseURL, symbol, interval, limit, panel)
 	}
 
 	endpoint, err := buildKlineURL(baseURL, symbol, interval, limit)

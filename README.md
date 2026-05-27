@@ -2,7 +2,7 @@
 
 [中文文档](./README.zh-CN.md)
 
-`crypto-ticker` is a terminal-based crypto market viewer written in Go. It supports realtime futures and spot monitoring with live candlestick charts, rendered with a `tview/tcell` TUI. Both **Binance** and **Gate.io** are supported.
+`crypto-ticker` is a terminal-based crypto market viewer written in Go. It supports realtime futures and spot monitoring with live candlestick charts, rendered with a `tview/tcell` TUI. **Binance**, **Gate.io**, **OKX**, and **Bitget** are supported.
 
 ## Preview
 
@@ -10,7 +10,7 @@
 
 ## Features
 
-- Realtime quotes over WebSocket — supports **Binance** and **Gate.io** (futures + spot)
+- Realtime quotes over WebSocket — **Binance**, **Gate.io**, **OKX**, and **Bitget** (futures + spot)
 - Live candlestick charts (1h / 2h / 4h / 1d / 3d) with keyboard symbol and interval switching
 - Volume bars, EMA20/50, RSI14, Bollinger Bands, and MACD shown below each chart
 - 24h price change %, Open Interest (with ▲/▼ change), Long/Short Ratio, and Funding Rate per symbol
@@ -68,14 +68,16 @@ It looks for config files in this order:
 If no config file is found, or any required field is missing, the program exits with an error.
 
 Example configs are included:
-- Binance: [config.example.toml](./config.example.toml)
-- Gate.io: [config.gate.example.toml](./config.gate.example.toml)
+- Binance: [config.example.binance.toml](./config.example.binance.toml)
+- Gate.io: [config.example.gate.toml](./config.example.gate.toml)
+- OKX: [config.example.okx.toml](./config.example.okx.toml)
+- Bitget: [config.example.bitget.toml](./config.example.bitget.toml)
 
 ## Config Fields
 
 | Field | Description |
 |-------|-------------|
-| `exchange` | `binance` (default) or `gate` |
+| `exchange` | `binance` (default), `gate`, `okx`, or `bitget` |
 | `symbols` | Futures symbols to subscribe to, e.g. `["ETHUSDT", "BTCUSDT"]` (Binance) or `["BTC_USDT", "ETH_USDT"]` (Gate.io) |
 | `spot_symbols` | Spot assets to display |
 | `chart_symbol` | Default futures chart symbol on startup |
@@ -118,6 +120,22 @@ Defaults applied automatically:
 - Spot REST: `https://api.gateio.ws`
 - Spot WS: `wss://api.gateio.ws/ws/v4/`
 
+### Bitget
+
+Uses compact symbols like Binance (`BTCUSDT`). Account auth requires `api_passphrase` (or `BITGET_API_PASSPHRASE`).
+
+```toml
+exchange = "bitget"
+symbols  = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+api_passphrase = "your_passphrase"
+```
+
+Defaults applied automatically:
+- REST: `https://api.bitget.com`
+- WS: `wss://ws.bitget.com/v2/ws/public` (futures and spot)
+
+See [config.example.bitget.toml](./config.example.bitget.toml).
+
 ## API Key Setup (Optional)
 
 An API key is **not required** to view market data. It is only needed for **account features** such as viewing futures positions and spot balances, as well as **placing, cancelling, and modifying orders**.
@@ -130,6 +148,8 @@ Environment variables take precedence over config file values.
 |----------|-------------|----------------|
 | Binance | `BINANCE_API_KEY` | `BINANCE_API_SECRET` |
 | Gate.io | `GATE_API_KEY` | `GATE_API_SECRET` |
+| OKX | `OKX_API_KEY` | `OKX_API_SECRET` (+ `OKX_API_PASSPHRASE`) |
+| Bitget | `BITGET_API_KEY` | `BITGET_API_SECRET` (+ `BITGET_API_PASSPHRASE`) |
 
 ```bash
 export BINANCE_API_KEY=your_key

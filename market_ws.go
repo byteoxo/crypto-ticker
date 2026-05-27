@@ -31,6 +31,8 @@ func runWSLoop(ctx context.Context, cfg config, state *appState, notify func(), 
 		return runGateWSLoop(ctx, cfg, state, notify, getChartSymbol, getChartInterval, getTickerSymbols, isSpotChartSymbol)
 	case cfg.isOKX():
 		return runOKXWSLoop(ctx, cfg, state, notify, getChartSymbol, getChartInterval, getTickerSymbols, isSpotChartSymbol)
+	case cfg.isBitget():
+		return runBitgetWSLoop(ctx, cfg, state, notify, getChartSymbol, getChartInterval, getTickerSymbols, isSpotChartSymbol)
 	default:
 		for {
 			if ctx.Err() != nil {
@@ -179,6 +181,9 @@ func runSpotWSLoop(ctx context.Context, cfg config, state *appState, notify func
 	}
 	if cfg.isOKX() {
 		return runOKXSpotWSLoop(ctx, cfg, state, notify, getSpotTickerSymbols, wsBase)
+	}
+	if cfg.isBitget() {
+		return runBitgetSpotWSLoop(ctx, cfg, state, notify, getSpotTickerSymbols, wsBase)
 	}
 	for {
 		if ctx.Err() != nil {

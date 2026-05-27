@@ -37,6 +37,9 @@ const (
 	// OKX (REST host serves both panels; WS is public v5)
 	defaultOKXRESTBaseURL = "https://www.okx.com"
 	defaultOKXWSBaseURL   = "wss://ws.okx.com:8443/ws/v5/public"
+	// Bitget (REST + public WS v2; spot uses same hosts with instType=SPOT)
+	defaultBitgetRESTBaseURL = "https://api.bitget.com"
+	defaultBitgetWSBaseURL   = "wss://ws.bitget.com/v2/ws/public"
 
 	defaultTimeout             = 8 * time.Second
 	userDataKeepaliveInterval  = 50 * time.Minute
@@ -65,6 +68,8 @@ func spotRESTBaseURL(cfg config) string {
 		return defaultGateSpotRESTBaseURL
 	case cfg.isOKX():
 		return defaultOKXRESTBaseURL
+	case cfg.isBitget():
+		return defaultBitgetRESTBaseURL
 	default:
 		return defaultSpotRESTBaseURL
 	}
@@ -76,6 +81,8 @@ func spotWSBaseURL(cfg config) string {
 		return defaultGateSpotWSBaseURL
 	case cfg.isOKX():
 		return defaultOKXWSBaseURL
+	case cfg.isBitget():
+		return defaultBitgetWSBaseURL
 	default:
 		return defaultSpotWSBaseURL
 	}
@@ -272,6 +279,8 @@ func run(ctx context.Context, client *http.Client, cfg config, loc *time.Locatio
 			go runGateMarketStatsLoop(ctx, client, cfg, state, ui.requestDraw)
 		case cfg.isOKX():
 			go runOKXMarketStatsLoop(ctx, client, cfg, state, ui.requestDraw)
+		case cfg.isBitget():
+			go runBitgetMarketStatsLoop(ctx, client, cfg, state, ui.requestDraw)
 		default:
 			go runMarketStatsLoop(ctx, client, cfg, state, ui.requestDraw)
 		}
@@ -282,11 +291,13 @@ func run(ctx context.Context, client *http.Client, cfg config, loc *time.Locatio
 			go runGatePositionsLoop(ctx, client, cfg, state, ui.requestDraw)
 		case cfg.isOKX():
 			go runOKXPositionsLoop(ctx, client, cfg, state, ui.requestDraw)
+		case cfg.isBitget():
+			go runBitgetPositionsLoop(ctx, client, cfg, state, ui.requestDraw)
 		default:
 			go runUserDataLoop(ctx, client, cfg, state, ui.requestDraw)
 		}
 	}
-	if cfg.hasAccountAuth() && cfg.hasSpot() && !cfg.isGate() && !cfg.isOKX() {
+	if cfg.hasAccountAuth() && cfg.hasSpot() && !cfg.isGate() && !cfg.isOKX() && !cfg.isBitget() {
 		go runSpotUserDataLoop(ctx, client, cfg, state, ui.requestDraw)
 	}
 	if cfg.hasSpot() {

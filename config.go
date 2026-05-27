@@ -52,7 +52,7 @@ func (cfg config) hasAccountAuth() bool {
 	if cfg.APIKey == "" || cfg.APISecret == "" {
 		return false
 	}
-	if cfg.isOKX() && strings.TrimSpace(cfg.APIPassphrase) == "" {
+	if (cfg.isOKX() || cfg.isBitget()) && strings.TrimSpace(cfg.APIPassphrase) == "" {
 		return false
 	}
 	return true
@@ -70,6 +70,10 @@ func (cfg config) isOKX() bool {
 	return cfg.Exchange == "okx"
 }
 
+func (cfg config) isBitget() bool {
+	return cfg.Exchange == "bitget"
+}
+
 // chartsEnabled reports whether REST/WS should load candlesticks and the UI should show the chart panel.
 func (cfg config) chartsEnabled() bool {
 	return cfg.ChartLimit > 0
@@ -81,6 +85,8 @@ func envAPIKeyName(exchange string) string {
 		return "GATE_API_KEY"
 	case "okx":
 		return "OKX_API_KEY"
+	case "bitget":
+		return "BITGET_API_KEY"
 	default:
 		return "BINANCE_API_KEY"
 	}
@@ -92,6 +98,8 @@ func envAPISecretName(exchange string) string {
 		return "GATE_API_SECRET"
 	case "okx":
 		return "OKX_API_SECRET"
+	case "bitget":
+		return "BITGET_API_SECRET"
 	default:
 		return "BINANCE_API_SECRET"
 	}
@@ -116,6 +124,8 @@ func exchangeDefaults(exchange string) (string, string) {
 		return defaultGateRESTBaseURL, defaultGateWSBaseURL
 	case "okx":
 		return defaultOKXRESTBaseURL, defaultOKXWSBaseURL
+	case "bitget":
+		return defaultBitgetRESTBaseURL, defaultBitgetWSBaseURL
 	default:
 		return defaultRESTBaseURL, defaultWSBaseURL
 	}
@@ -152,13 +162,13 @@ func loadConfig() (config, error) {
 	if exchange == "" {
 		exchange = "binance"
 	}
-	if exchange != "binance" && exchange != "gate" && exchange != "okx" {
-		return config{}, fmt.Errorf("config %s field %q must be one of %q, %q, or %q", path, "exchange", "binance", "gate", "okx")
+	if exchange != "binance" && exchange != "gate" && exchange != "okx" && exchange != "bitget" {
+		return config{}, fmt.Errorf("config %s field %q must be one of %q, %q, %q, or %q", path, "exchange", "binance", "gate", "okx", "bitget")
 	}
 
 	symbols := normalizeSymbols(strings.Join(raw.Symbols, ","))
 	spotSymbols := normalizeSymbols(strings.Join(raw.SpotSymbols, ","))
-	if exchange == "binance" {
+	if exchange == "binance" || exchange == "bitget" {
 		for i := range symbols {
 			symbols[i] = strings.ReplaceAll(symbols[i], "_", "")
 		}
@@ -189,7 +199,7 @@ func loadConfig() (config, error) {
 	}
 
 	chartSymbol := strings.ToUpper(strings.TrimSpace(raw.ChartSymbol))
-	if chartSymbol != "" && exchange == "binance" {
+	if chartSymbol != "" && (exchange == "binance" || exchange == "bitget") {
 		chartSymbol = strings.ReplaceAll(chartSymbol, "_", "")
 	}
 	if chartSymbol != "" && exchange == "okx" {
@@ -237,12 +247,15 @@ func loadConfig() (config, error) {
 	if exchange == "okx" && os.Getenv("OKX_API_PASSPHRASE") != "" {
 		apiPassphrase = strings.TrimSpace(os.Getenv("OKX_API_PASSPHRASE"))
 	}
+	if exchange == "bitget" && os.Getenv("BITGET_API_PASSPHRASE") != "" {
+		apiPassphrase = strings.TrimSpace(os.Getenv("BITGET_API_PASSPHRASE"))
+	}
 
 	authIncompletePair := (apiKey == "") != (apiSecret == "")
-	if exchange == "okx" {
+	if exchange == "okx" || exchange == "bitget" {
 		hasAnyAuth := apiKey != "" || apiSecret != "" || apiPassphrase != ""
 		if hasAnyAuth && (apiKey == "" || apiSecret == "" || apiPassphrase == "") {
-			return config{}, fmt.Errorf("config %s exchange okx requires %q, %q, and %q together when using account auth", path, "api_key", "api_secret", "api_passphrase")
+			return config{}, fmt.Errorf("config %s exchange %s requires %q, %q, and %q together when using account auth", path, exchange, "api_key", "api_secret", "api_passphrase")
 		}
 	} else if authIncompletePair {
 		return config{}, fmt.Errorf("config %s requires both %q and %q when account auth is enabled", path, "api_key", "api_secret")

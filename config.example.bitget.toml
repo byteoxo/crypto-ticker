@@ -1,0 +1,28 @@
+# Bitget — copy to config.toml (or ~/.config/crypto-ticker/config.toml).
+#
+# USDT-M perpetual symbols use compact pairs: BTCUSDT, ETHUSDT (underscores are stripped).
+# Spot rows accept a base asset (BTC → BTCUSDT) or a full pair (ETHUSDT).
+#
+# Account features require api_key, api_secret, and api_passphrase together
+# (or BITGET_API_KEY / BITGET_API_SECRET / BITGET_API_PASSPHRASE env vars).
+
+exchange = "bitget"
+
+symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+spot_symbols = ["BTC", "ETH"]
+chart_symbol = "BTCUSDT"
+chart_limit = 48
+default_panel = "futures"
+timeout = "8s"
+tz = "Asia/Shanghai"
+
+# Defaults when omitted:
+# rest_base = "https://api.bitget.com"
+# ws_base   = "wss://ws.bitget.com/v2/ws/public"
+
+no_color = false
+retry_delay = "2s"
+
+api_key = ""
+api_secret = ""
+api_passphrase = ""
