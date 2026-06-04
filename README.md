@@ -60,12 +60,13 @@ go build -o crypto-ticker .
 
 The application reads config files only. It does not accept runtime CLI flags.
 
-It looks for config files in this order:
+Config resolution (first match wins):
 
-1. `./config.toml`
+1. `./config.toml` — overrides everything below
 2. `~/.config/crypto-ticker/config.toml`
+3. **Built-in default** — Binance settings from [config.example.binance.toml](./config.example.binance.toml), embedded in the binary at compile time (no config file required to run)
 
-If no config file is found, or any required field is missing, the program exits with an error.
+If a user config file is present but invalid, or any required field is missing, the program exits with an error.
 
 Example configs are included:
 - Binance: [config.example.binance.toml](./config.example.binance.toml)

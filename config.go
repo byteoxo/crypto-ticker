@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,12 @@ import (
 
 	"github.com/BurntSushi/toml"
 )
+
+//go:embed config.example.binance.toml
+var embeddedDefaultConfig []byte
+
+// embeddedConfigLabel is shown in the UI when the built-in default config is used.
+const embeddedConfigLabel = "embedded:config.example.binance.toml"
 
 type config struct {
 	Exchange      string
@@ -140,15 +147,24 @@ func mustLoadConfig() config {
 }
 
 func loadConfig() (config, error) {
-	path, err := resolveConfigPath()
-	if err != nil {
-		return config{}, err
-	}
-
 	var raw rawConfig
-	meta, err := toml.DecodeFile(path, &raw)
-	if err != nil {
-		return config{}, fmt.Errorf("decode config %s: %w", path, err)
+	var meta toml.MetaData
+	var path string
+
+	if userPath, ok := resolveUserConfigPath(); ok {
+		path = userPath
+		var err error
+		meta, err = toml.DecodeFile(path, &raw)
+		if err != nil {
+			return config{}, fmt.Errorf("decode config %s: %w", path, err)
+		}
+	} else {
+		path = embeddedConfigLabel
+		var err error
+		meta, err = toml.Decode(string(embeddedDefaultConfig), &raw)
+		if err != nil {
+			return config{}, fmt.Errorf("decode embedded default config: %w", err)
+		}
 	}
 
 	required := []string{"symbols", "chart_limit", "default_panel", "timeout", "tz", "no_color", "retry_delay"}
@@ -308,10 +324,12 @@ func loadConfig() (config, error) {
 	}, nil
 }
 
-func resolveConfigPath() (string, error) {
+// resolveUserConfigPath returns the first existing user config file, if any.
+// Priority: ./config.toml, then ~/.config/crypto-ticker/config.toml.
+func resolveUserConfigPath() (string, bool) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("resolve home directory: %w", err)
+		return "", false
 	}
 
 	candidates := []string{
@@ -323,13 +341,13 @@ func resolveConfigPath() (string, error) {
 		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
 			abs, absErr := filepath.Abs(candidate)
 			if absErr == nil {
-				return abs, nil
+				return abs, true
 			}
-			return candidate, nil
+			return candidate, true
 		}
 	}
 
-	return "", fmt.Errorf("config file not found; expected one of %s or %s", candidates[0], candidates[1])
+	return "", false
 }
 
 func isSpotTickerSymbolFunc(cfg config) func(string) bool {

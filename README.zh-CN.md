@@ -60,16 +60,19 @@ go build -o crypto-ticker .
 
 程序只读取配置文件，不接受运行时命令行参数。
 
-默认按以下顺序查找配置文件：
+配置优先级（先匹配先生效）：
 
-1. `./config.toml`
+1. `./config.toml` — 覆盖下方所有来源
 2. `~/.config/crypto-ticker/config.toml`
+3. **内置默认** — 编译时嵌入 [config.example.binance.toml](./config.example.binance.toml) 的 Binance 配置（无需任何配置文件即可运行）
 
-如果没有找到配置文件，或者缺少任何必填字段，程序会直接报错退出。
+若用户配置文件存在但无效，或缺少必填字段，程序会报错退出。
 
-仓库中提供了示例配置：
-- Binance：[config.example.toml](./config.example.toml)
-- Gate.io：[config.gate.example.toml](./config.gate.example.toml)
+仓库中提供了各交易所示例配置：
+- Binance：[config.example.binance.toml](./config.example.binance.toml)
+- Gate.io：[config.example.gate.toml](./config.example.gate.toml)
+- OKX：[config.example.okx.toml](./config.example.okx.toml)
+- Bitget：[config.example.bitget.toml](./config.example.bitget.toml)
 
 ## 配置字段
 

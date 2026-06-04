@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build
 go build -o binance-ticker .
 
-# Run (requires config.toml in CWD or ~/.config/binance-ticker/config.toml)
+# Run (config: ./config.toml > ~/.config/crypto-ticker/config.toml > embedded default)
 ./binance-ticker
 
 # Lint
@@ -22,7 +22,7 @@ Releases are produced via GoReleaser triggered by pushing a `v*` tag. The CI wor
 
 ## Configuration
 
-The app reads TOML config only — no CLI flags. Config is searched at `./config.toml` then `~/.config/binance-ticker/config.toml`. Copy `config.example.toml` to get started. All fields in `config.go:required` slice must be present or the program exits.
+The app reads TOML config only — no CLI flags. Config priority: `./config.toml`, `~/.config/crypto-ticker/config.toml`, else `config.example.binance.toml` embedded in the binary via `//go:embed`. Copy an exchange example to `config.toml` to customize. All fields in `config.go:required` slice must be present or the program exits.
 
 ## Architecture Overview
 

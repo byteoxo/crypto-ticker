@@ -1,4 +1,5 @@
-# Binance USDⓈ-M futures + spot — copy to config.toml (or ~/.config/crypto-ticker/config.toml).
+# Binance USDⓈ-M futures + spot — embedded in the crypto-ticker binary as the default config.
+# Copy to ./config.toml or ~/.config/crypto-ticker/config.toml to override.
 #
 # Futures symbols use compact pairs: BTCUSDT, ETHUSDT (underscores are stripped if present).
 # Spot rows accept a base asset (BTC → BTCUSDT) or a full pair (ETHUSDT).
