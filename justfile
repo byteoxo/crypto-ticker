@@ -1,10 +1,10 @@
 default: build
 
 build:
-    go build -o crypto-ticker .
+    go build -o crypto .
 
 run: build
-    ./crypto-ticker
+    ./crypto
 
 lint:
     go vet ./...
@@ -26,4 +26,5 @@ release tag:
 
 clean:
     rm -f crypto-ticker
+    rm -f crypto
     rm -rf dist/
