@@ -6,6 +6,9 @@ build:
 run: build
     ./crypto
 
+install: build
+    sudo install -m 755 crypto /usr/local/bin/crypto
+
 lint:
     go vet ./...
 
