@@ -44,7 +44,7 @@ const (
 	defaultTimeout             = 8 * time.Second
 	userDataKeepaliveInterval  = 50 * time.Minute
 	uiRefreshInterval          = time.Second
-	defaultChartLimit          = 48
+	defaultChartLimit          = 16
 	defaultChartHeight         = 12
 	chartCandleWidth           = 1
 	chartCandleGap             = 1
