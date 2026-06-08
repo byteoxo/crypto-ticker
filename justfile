@@ -28,6 +28,16 @@ release tag:
     git push origin {{tag}}
 
 clean:
-    rm -f crypto-ticker
-    rm -f crypto
-    rm -rf dist/
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args=(-fdx)
+    if [[ -f .cleanexclude ]]; then
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            line="${line%%#*}"
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%"${line##*[![:space:]]}"}"
+            [[ -z "$line" ]] && continue
+            args+=(-e "$line")
+        done < .cleanexclude
+    fi
+    git clean "${args[@]}"
