@@ -20,6 +20,9 @@ import (
 func runMarketStatsLoop(ctx context.Context, client *http.Client, cfg config, state *appState, notify func()) {
 	fetch := func() {
 		for _, symbol := range cfg.Symbols {
+			if oi, err := fetchOpenInterest(ctx, client, cfg.RESTBase, symbol); err == nil {
+				state.setOpenInterest(oi)
+			}
 			if ls, err := fetchLongShortRatio(ctx, client, cfg.RESTBase, symbol); err == nil {
 				state.setLongShortRatio(ls)
 			}
@@ -37,6 +40,49 @@ func runMarketStatsLoop(ctx context.Context, client *http.Client, cfg config, st
 			fetch()
 		}
 	}
+}
+
+func fetchOpenInterest(ctx context.Context, client *http.Client, baseURL, symbol string) (openInterestData, error) {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return openInterestData{}, err
+	}
+	parsed.Path = "/fapi/v1/openInterest"
+	q := url.Values{}
+	q.Set("symbol", symbol)
+	parsed.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		return openInterestData{}, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return openInterestData{}, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return openInterestData{}, fmt.Errorf("open interest status %s", resp.Status)
+	}
+
+	var payload struct {
+		Symbol       string `json:"symbol"`
+		OpenInterest string `json:"openInterest"`
+		Time         int64  `json:"time"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return openInterestData{}, err
+	}
+	if payload.Symbol == "" {
+		return openInterestData{}, fmt.Errorf("open interest: missing symbol")
+	}
+	oi, _ := strconv.ParseFloat(payload.OpenInterest, 64)
+	return openInterestData{
+		Symbol:       payload.Symbol,
+		OpenInterest: oi,
+		Time:         payload.Time,
+	}, nil
 }
 
 func fetchLongShortRatio(ctx context.Context, client *http.Client, baseURL, symbol string) (longShortRatioData, error) {

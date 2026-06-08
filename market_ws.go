@@ -121,14 +121,6 @@ func consumeWS(ctx context.Context, cfg config, state *appState, notify func(), 
 				}
 				state.setFundingRates([]fundingRate{fr})
 				notify()
-			case strings.Contains(streamLC, "@openinterest"):
-				oi, err := parseWSOpenInterest(envelope.Data)
-				if err != nil {
-					readErrCh <- fmt.Errorf("decode websocket open interest payload: %w", err)
-					return
-				}
-				state.setOpenInterest(oi)
-				notify()
 			case strings.HasSuffix(streamLC, klineSuffixLC):
 				candle, err := parseWSKline(envelope.Data)
 				if err != nil {
@@ -407,32 +399,12 @@ func parseWSMarkPriceFunding(data []byte) (fundingRate, error) {
 	}, nil
 }
 
-func parseWSOpenInterest(data []byte) (openInterestData, error) {
-	var p struct {
-		Symbol       string            `json:"s"`
-		OpenInterest string            `json:"o"`
-		EventTime    jsonFlexibleInt64 `json:"E"`
-	}
-	if err := json.Unmarshal(data, &p); err != nil {
-		return openInterestData{}, err
-	}
-	if p.Symbol == "" {
-		return openInterestData{}, fmt.Errorf("open interest: missing symbol")
-	}
-	oi, _ := strconv.ParseFloat(p.OpenInterest, 64)
-	return openInterestData{
-		Symbol:       p.Symbol,
-		OpenInterest: oi,
-		Time:         int64(p.EventTime),
-	}, nil
-}
-
 func buildWSURL(baseURL string, symbols []string, chartSymbol, chartInterval string) string {
 	symbols = normalizeSymbolList(symbols)
-	streams := make([]string, 0, len(symbols)*3+1)
+	streams := make([]string, 0, len(symbols)*2+1)
 	for _, symbol := range symbols {
 		lsym := strings.ToLower(symbol)
-		streams = append(streams, lsym+"@ticker", lsym+"@markPrice@1s", lsym+"@openInterest")
+		streams = append(streams, lsym+"@ticker", lsym+"@markPrice@1s")
 	}
 	if chartSymbol != "" {
 		if chartInterval == "" {
