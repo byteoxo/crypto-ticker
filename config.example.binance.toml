@@ -9,9 +9,10 @@
 
 exchange = "binance"
 
+# Futures chart uses the first entry in symbols (spot chart uses the first spot_symbols entry).
+
 symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 spot_symbols = ["BTC", "ETH"]
-chart_symbol = "BTCUSDT"
 chart_limit = 16
 default_panel = "futures"
 timeout = "8s"

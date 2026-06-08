@@ -10,7 +10,6 @@ exchange = "bitget"
 
 symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 spot_symbols = ["BTC", "ETH"]
-chart_symbol = "BTCUSDT"
 chart_limit = 16
 default_panel = "futures"
 timeout = "8s"

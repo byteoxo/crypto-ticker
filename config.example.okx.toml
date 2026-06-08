@@ -10,7 +10,6 @@ exchange = "okx"
 
 symbols = ["BTC-USDT-SWAP", "ETH-USDT-SWAP", "SOL-USDT-SWAP"]
 spot_symbols = ["BTC-USDT", "ETH-USDT"]
-chart_symbol = "BTC-USDT-SWAP"
 chart_limit = 16
 default_panel = "futures"
 timeout = "8s"

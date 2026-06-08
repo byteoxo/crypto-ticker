@@ -4,7 +4,6 @@ exchange = "gate"
 
 symbols = ["BTC_USDT", "ETH_USDT", "SOL_USDT"]
 spot_symbols = ["BTC_USDT", "ETH_USDT"]
-chart_symbol = "BTC_USDT"
 chart_limit = 16
 default_panel = "futures"
 timeout = "8s"

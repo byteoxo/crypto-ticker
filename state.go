@@ -198,9 +198,6 @@ func newAppState(cfg config) *appState {
 	futuresChartSymbol := ""
 	if len(cfg.Symbols) > 0 && cfg.chartsEnabled() {
 		futuresChartSymbol = cfg.ChartSymbol
-		if futuresChartSymbol == "" {
-			futuresChartSymbol = cfg.Symbols[0]
-		}
 	}
 	spotChartSymbol := ""
 	if len(spotTickers) > 0 && cfg.chartsEnabled() {

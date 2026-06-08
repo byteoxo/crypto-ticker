@@ -41,7 +41,6 @@ type rawConfig struct {
 	Exchange      string   `toml:"exchange"`
 	Symbols       []string `toml:"symbols"`
 	SpotSymbols   []string `toml:"spot_symbols"`
-	ChartSymbol   string   `toml:"chart_symbol"`
 	ChartLimit    int      `toml:"chart_limit"`
 	DefaultPanel  string   `toml:"default_panel"`
 	Timeout       string   `toml:"timeout"`
@@ -214,23 +213,14 @@ func loadConfig() (config, error) {
 		return config{}, fmt.Errorf("config %s must define at least one of %q or %q", path, "symbols", "spot_symbols")
 	}
 
-	chartSymbol := strings.ToUpper(strings.TrimSpace(raw.ChartSymbol))
-	if chartSymbol != "" && (exchange == "binance" || exchange == "bitget") {
-		chartSymbol = strings.ReplaceAll(chartSymbol, "_", "")
-	}
-	if chartSymbol != "" && exchange == "okx" {
-		c := okxCompactFromInstID(chartSymbol)
-		if c == "" {
-			return config{}, fmt.Errorf("config %s exchange okx: invalid chart_symbol %q (use OKX instrument ids, e.g. BTC-USDT-SWAP)", path, strings.TrimSpace(raw.ChartSymbol))
-		}
-		chartSymbol = c
-	}
 	chartLimit := raw.ChartLimit
 	if chartLimit < 0 {
 		return config{}, fmt.Errorf("config %s field %q must be >= 0", path, "chart_limit")
 	}
-	if chartSymbol == "" && len(symbols) > 0 && chartLimit > 0 {
-		return config{}, fmt.Errorf("config %s field %q cannot be empty when futures symbols are configured and chart_limit > 0", path, "chart_symbol")
+
+	chartSymbol := ""
+	if chartLimit > 0 && len(symbols) > 0 {
+		chartSymbol = symbols[0]
 	}
 
 	defaultPanel := panelMode(strings.ToLower(strings.TrimSpace(raw.DefaultPanel)))

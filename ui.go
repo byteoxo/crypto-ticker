@@ -710,8 +710,8 @@ func (ui *uiModel) renderChart(candles []klineCandle, symbol, interval string) {
 	if !ui.cfg.chartsEnabled() {
 		return
 	}
-	if symbol == "" {
-		symbol = ui.cfg.ChartSymbol
+	if symbol == "" && len(ui.cfg.Symbols) > 0 {
+		symbol = ui.cfg.Symbols[0]
 	}
 	if interval == "" {
 		interval = defaultChartInterval
