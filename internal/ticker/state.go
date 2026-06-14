@@ -1,6 +1,8 @@
-package main
+package ticker
 
 import (
+	"crypto-ticker/internal/format"
+	"crypto-ticker/internal/symbol"
 	"math"
 	"sort"
 	"strconv"
@@ -186,7 +188,7 @@ func newAppState(cfg config) *appState {
 		rows[symbol] = rowState{Symbol: symbol, Status: "waiting"}
 	}
 	spotRows := make(map[string]rowState, len(cfg.SpotSymbols))
-	spotTickers := spotSymbolsToTickers(cfg.SpotSymbols)
+	spotTickers := symbol.SpotSymbolsToTickers(cfg.SpotSymbols)
 	for _, symbol := range spotTickers {
 		spotRows[symbol] = rowState{Symbol: symbol, Status: "waiting"}
 	}
@@ -453,7 +455,7 @@ func (s *appState) applySpotTicker(ticker priceTicker) {
 			if s.spotBalances[i].PriceSymbol == ticker.Symbol {
 				s.spotBalances[i].PriceValue = value
 				s.spotBalances[i].QuoteValue = s.spotBalances[i].Total * value
-				s.spotBalances[i].QuoteValueText = formatCompactFloat(s.spotBalances[i].QuoteValue)
+				s.spotBalances[i].QuoteValueText = format.CompactFloat(s.spotBalances[i].QuoteValue)
 				s.spotBalances[i].LocalUpdate = time.Now()
 			}
 		}
@@ -470,7 +472,7 @@ func (s *appState) setSpotBalances(balances []spotBalance) {
 		if row, ok := s.spotRows[s.spotBalances[i].PriceSymbol]; ok && row.PriceValue > 0 {
 			s.spotBalances[i].PriceValue = row.PriceValue
 			s.spotBalances[i].QuoteValue = s.spotBalances[i].Total * row.PriceValue
-			s.spotBalances[i].QuoteValueText = formatCompactFloat(s.spotBalances[i].QuoteValue)
+			s.spotBalances[i].QuoteValueText = format.CompactFloat(s.spotBalances[i].QuoteValue)
 		}
 	}
 	s.spotAccountLastUpdate = time.Now()
@@ -514,7 +516,7 @@ func (s *appState) applySpotBalanceUpdates(updates []spotBalanceUpdate) {
 			if row, ok := s.spotRows[balance.PriceSymbol]; ok && row.PriceValue > 0 {
 				balance.PriceValue = row.PriceValue
 				balance.QuoteValue = total * row.PriceValue
-				balance.QuoteValueText = formatCompactFloat(balance.QuoteValue)
+				balance.QuoteValueText = format.CompactFloat(balance.QuoteValue)
 			} else {
 				balance.PriceValue = 0
 				balance.QuoteValue = 0
@@ -533,14 +535,14 @@ func (s *appState) applySpotBalanceUpdates(updates []spotBalanceUpdate) {
 			Free:           update.Free,
 			Locked:         update.Locked,
 			Total:          total,
-			PriceSymbol:    spotSymbolToTicker(update.Asset),
+			PriceSymbol:    symbol.SpotSymbolToTicker(update.Asset),
 			QuoteValueText: "-",
 			LocalUpdate:    time.Now(),
 		}
 		if row, ok := s.spotRows[balance.PriceSymbol]; ok && row.PriceValue > 0 {
 			balance.PriceValue = row.PriceValue
 			balance.QuoteValue = total * row.PriceValue
-			balance.QuoteValueText = formatCompactFloat(balance.QuoteValue)
+			balance.QuoteValueText = format.CompactFloat(balance.QuoteValue)
 		}
 		s.spotBalances = append(s.spotBalances, balance)
 		indexByAsset[balance.Asset] = len(s.spotBalances) - 1

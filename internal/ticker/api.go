@@ -1,7 +1,8 @@
-package main
+package ticker
 
 import (
 	"context"
+	"crypto-ticker/internal/symbol"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -333,7 +334,7 @@ func fetchSpotBalances(ctx context.Context, client *http.Client, cfg config) ([]
 		return nil, fmt.Errorf("decode spot account response: %w", err)
 	}
 
-	allowed := allowedSpotAssets(cfg.SpotSymbols)
+	allowed := symbol.AllowedSpotAssets(cfg.SpotSymbols)
 
 	balances := make([]spotBalance, 0, len(payload.Balances))
 	for _, item := range payload.Balances {
@@ -366,7 +367,7 @@ func parseSpotBalance(item spotBalancePayload, allowed map[string]struct{}) (spo
 	if total <= 0 {
 		return spotBalance{}, false, nil
 	}
-	priceSymbol := spotSymbolToTicker(asset)
+	priceSymbol := symbol.SpotSymbolToTicker(asset)
 	return spotBalance{Asset: asset, Free: free, Locked: locked, Total: total, PriceSymbol: priceSymbol, QuoteValueText: "-"}, true, nil
 }
 

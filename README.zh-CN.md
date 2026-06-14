@@ -52,7 +52,7 @@ brew install crypto-ticker
 ```bash
 git clone https://github.com/byteoxo/crypto-ticker.git
 cd crypto-ticker
-go build -o crypto-ticker .
+go build -o crypto-ticker ./cmd/crypto-ticker
 ./crypto-ticker
 ```
 
@@ -64,15 +64,15 @@ go build -o crypto-ticker .
 
 1. `./config.toml` — 覆盖下方所有来源
 2. `~/.config/crypto-ticker/config.toml`
-3. **内置默认** — 编译时嵌入 [config.example.binance.toml](./config.example.binance.toml) 的 Binance 配置（无需任何配置文件即可运行）
+3. **内置默认** — 编译时嵌入 [configs/config.example.binance.toml](./configs/config.example.binance.toml) 的 Binance 配置（无需任何配置文件即可运行）
 
 若用户配置文件存在但无效，或缺少必填字段，程序会报错退出。
 
-仓库中提供了各交易所示例配置：
-- Binance：[config.example.binance.toml](./config.example.binance.toml)
-- Gate.io：[config.example.gate.toml](./config.example.gate.toml)
-- OKX：[config.example.okx.toml](./config.example.okx.toml)
-- Bitget：[config.example.bitget.toml](./config.example.bitget.toml)
+仓库中提供了各交易所示例配置（[configs/](./configs/)）：
+- Binance：[configs/config.example.binance.toml](./configs/config.example.binance.toml)
+- Gate.io：[configs/config.example.gate.toml](./configs/config.example.gate.toml)
+- OKX：[configs/config.example.okx.toml](./configs/config.example.okx.toml)
+- Bitget：[configs/config.example.bitget.toml](./configs/config.example.bitget.toml)
 
 ## 配置字段
 

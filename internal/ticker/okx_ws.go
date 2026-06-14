@@ -1,4 +1,4 @@
-package main
+package ticker
 
 // OKX WebSocket API v5:
 // - Tickers (and most public feeds): wss://ws.okx.com:8443/ws/v5/public
@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto-ticker/internal/symbol"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -125,7 +126,7 @@ func consumeOKXWS(ctx context.Context, cfg config, state *appState, notify func(
 
 	pubArgs := make([]map[string]string, 0)
 	for _, sym := range getTickerSymbols() {
-		inst := okxSwapInstID(sym)
+		inst := symbol.OKXSwapInstID(sym)
 		pubArgs = append(pubArgs,
 			map[string]string{"channel": "tickers", "instId": inst},
 			map[string]string{"channel": "funding-rate", "instId": inst},
@@ -147,7 +148,7 @@ func consumeOKXWS(ctx context.Context, cfg config, state *appState, notify func(
 		defer connBiz.Close()
 		prepareOKXConn(connBiz, cfg.Timeout)
 		bizArgs := []map[string]string{
-			{"channel": okxCandleChannel(chartInterval), "instId": okxSwapInstID(chartSym)},
+			{"channel": okxCandleChannel(chartInterval), "instId": symbol.OKXSwapInstID(chartSym)},
 		}
 		if err := connBiz.WriteJSON(map[string]interface{}{"op": "subscribe", "args": bizArgs}); err != nil {
 			return fmt.Errorf("okx subscribe candles: %w", err)
@@ -245,7 +246,7 @@ func okxFundingRatesFromWSData(raw json.RawMessage) ([]fundingRate, error) {
 		rate, _ := strconv.ParseFloat(r.FundingRate, 64)
 		nextMs, _ := strconv.ParseInt(r.NextFundingTime, 10, 64)
 		out = append(out, fundingRate{
-			Symbol:          okxCompactFromInstID(r.InstID),
+			Symbol:          symbol.OKXCompactFromInstID(r.InstID),
 			MarkPrice:       mark,
 			IndexPrice:      index,
 			LastFundingRate: rate,
@@ -275,7 +276,7 @@ func okxOpenInterestFromWSData(raw json.RawMessage) ([]openInterestData, error) 
 		oi, _ := strconv.ParseFloat(r.Oi, 64)
 		ts, _ := strconv.ParseInt(r.Ts, 10, 64)
 		out = append(out, openInterestData{
-			Symbol:       okxCompactFromInstID(r.InstID),
+			Symbol:       symbol.OKXCompactFromInstID(r.InstID),
 			OpenInterest: oi,
 			Time:         ts,
 		})
@@ -441,7 +442,7 @@ func okxWSTickerRowToPrice(row struct {
 		chgPct = (last - open) / open * 100
 	}
 	return priceTicker{
-		Symbol:       okxCompactFromInstID(row.InstID),
+		Symbol:       symbol.OKXCompactFromInstID(row.InstID),
 		Price:        row.Last,
 		Time:         time.Now().UnixMilli(),
 		ChangePct24h: chgPct,
@@ -460,7 +461,7 @@ func parseOKXWSCandle(instID string, row []string) (klineCandle, error) {
 	if err != nil {
 		return klineCandle{}, err
 	}
-	symbol := okxCompactFromInstID(instID)
+	symbol := symbol.OKXCompactFromInstID(instID)
 	closed := len(row) > 0 && row[len(row)-1] == "1"
 	candle, err := newKlineCandle(symbol, openMs, openMs, row[1], row[2], row[3], row[4], row[5], closed)
 	if err != nil {
@@ -514,7 +515,7 @@ func consumeOKXSpotWS(ctx context.Context, cfg config, state *appState, notify f
 
 	pubArgs := make([]map[string]string, 0)
 	for _, sym := range getSpotTickerSymbols() {
-		pubArgs = append(pubArgs, map[string]string{"channel": "tickers", "instId": okxSpotInstID(sym)})
+		pubArgs = append(pubArgs, map[string]string{"channel": "tickers", "instId": symbol.OKXSpotInstID(sym)})
 	}
 	if err := connPub.WriteJSON(map[string]interface{}{"op": "subscribe", "args": pubArgs}); err != nil {
 		return fmt.Errorf("okx spot subscribe tickers: %w", err)
@@ -531,7 +532,7 @@ func consumeOKXSpotWS(ctx context.Context, cfg config, state *appState, notify f
 		defer connBiz.Close()
 		prepareOKXConn(connBiz, cfg.Timeout)
 		bizArgs := []map[string]string{
-			{"channel": okxCandleChannel(chartInterval), "instId": okxSpotInstID(chartSym)},
+			{"channel": okxCandleChannel(chartInterval), "instId": symbol.OKXSpotInstID(chartSym)},
 		}
 		if err := connBiz.WriteJSON(map[string]interface{}{"op": "subscribe", "args": bizArgs}); err != nil {
 			return fmt.Errorf("okx spot subscribe candles: %w", err)

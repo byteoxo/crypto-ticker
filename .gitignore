@@ -1,7 +1,7 @@
 bt
-binance-ticker
-crypto-ticker
-crypto
+/binance-ticker
+/crypto-ticker
+/crypto
 config.toml
 *.exe
 *.test

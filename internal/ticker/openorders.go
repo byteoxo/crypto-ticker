@@ -1,7 +1,8 @@
-package main
+package ticker
 
 import (
 	"context"
+	"crypto-ticker/internal/format"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -708,7 +709,7 @@ func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 			if strings.ToUpper(o.Side) == "SELL" {
 				sideColor = "[red]"
 			}
-			priceStr := formatCompactFloat(o.Price)
+			priceStr := format.CompactFloat(o.Price)
 			if o.Price == 0 {
 				priceStr = "MKT"
 			}
@@ -717,7 +718,7 @@ func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 				if o.TriggerRule == 2 {
 					rule = "≤"
 				}
-				priceStr = fmt.Sprintf("%s (%s%s)", priceStr, rule, formatCompactFloat(o.TriggerPrice))
+				priceStr = fmt.Sprintf("%s (%s%s)", priceStr, rule, format.CompactFloat(o.TriggerPrice))
 			}
 			timeStr := time.Unix(o.Time/1000, 0).Format("01-02 15:04")
 
@@ -725,8 +726,8 @@ func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 			setCell(strings.ToUpper(o.Side), sideColor, row, 1)
 			setCell(strings.ToUpper(o.Type), "[white]", row, 2)
 			setCell(priceStr, "[white]", row, 3)
-			setCell(formatCompactFloat(o.OrigQty), "[white]", row, 4)
-			setCell(formatCompactFloat(o.FilledQty), "[gray]", row, 5)
+			setCell(format.CompactFloat(o.OrigQty), "[white]", row, 4)
+			setCell(format.CompactFloat(o.FilledQty), "[gray]", row, 5)
 			setCell(o.TimeInForce, "[gray]", row, 6)
 			setCell(strings.ToUpper(o.Status), "[white]", row, 7)
 			setCell(timeStr, "[gray]", row, 8)
@@ -1003,7 +1004,7 @@ func (ui *uiModel) showCancelOrderConfirm() {
 
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("Cancel order #%d?\n%s %s @ %s",
-			order.OrderID, order.Side, order.Symbol, formatCompactFloat(order.Price))).
+			order.OrderID, order.Side, order.Symbol, format.CompactFloat(order.Price))).
 		AddButtons([]string{"Yes", "No"}).
 		SetDoneFunc(func(_ int, label string) {
 			ui.closeOrderForm()
@@ -1061,9 +1062,9 @@ func (ui *uiModel) showEditPriceForm() {
 	}
 
 	form := tview.NewForm()
-	form.AddInputField("New Price", formatCompactFloat(order.Price), 20, numFilter, nil)
+	form.AddInputField("New Price", format.CompactFloat(order.Price), 20, numFilter, nil)
 	if !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget() {
-		form.AddInputField("New Quantity", formatCompactFloat(order.OrigQty), 20, numFilter, nil)
+		form.AddInputField("New Quantity", format.CompactFloat(order.OrigQty), 20, numFilter, nil)
 	}
 	form.AddButton("Submit", func() {
 		newPrice := strings.TrimSpace(form.GetFormItem(0).(*tview.InputField).GetText())
@@ -1111,7 +1112,7 @@ func (ui *uiModel) showEditPriceForm() {
 	})
 	form.SetBorder(true).
 		SetTitle(fmt.Sprintf(" Edit #%d %s %s @ %s ",
-			order.OrderID, order.Side, order.Symbol, formatCompactFloat(order.Price))).
+			order.OrderID, order.Side, order.Symbol, format.CompactFloat(order.Price))).
 		SetTitleAlign(tview.AlignCenter)
 	form.SetBackgroundColor(tcell.ColorDefault)
 

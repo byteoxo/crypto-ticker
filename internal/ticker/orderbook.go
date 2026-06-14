@@ -1,7 +1,9 @@
-package main
+package ticker
 
 import (
 	"context"
+	"crypto-ticker/internal/format"
+	"crypto-ticker/internal/symbol"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -108,7 +110,7 @@ func (ui *uiModel) orderBookSymbolForPanel(panel panelMode) string {
 		return sym
 	}
 	if panel == panelSpot {
-		tickers := spotSymbolsToTickers(ui.cfg.SpotSymbols)
+		tickers := symbol.SpotSymbolsToTickers(ui.cfg.SpotSymbols)
 		if len(tickers) > 0 {
 			return tickers[0]
 		}
@@ -257,7 +259,7 @@ func (ui *uiModel) renderOrderBook(bids, asks [][]string, symbol string) {
 		askLevels[len(asks)-1-i] = struct{ price, size, total string }{
 			price: price,
 			size:  asks[i][1],
-			total: formatCompactFloat(askTotal),
+			total: format.CompactFloat(askTotal),
 		}
 	}
 	// askLevels[0] = highest ask, askLevels[last] = lowest ask (closest to spread)
@@ -281,7 +283,7 @@ func (ui *uiModel) renderOrderBook(bids, asks [][]string, symbol string) {
 		if errA == nil && errB == nil && bestAsk > 0 {
 			diff := bestAsk - bestBid
 			pct := diff / bestAsk * 100
-			spread = fmt.Sprintf("Spread: %s (%.4f%%)", formatCompactFloat(diff), pct)
+			spread = fmt.Sprintf("Spread: %s (%.4f%%)", format.CompactFloat(diff), pct)
 			_ = spreadPct
 		}
 	}
@@ -311,7 +313,7 @@ func (ui *uiModel) renderOrderBook(bids, asks [][]string, symbol string) {
 		if len(level) >= 2 {
 			sz = level[1]
 		}
-		totalStr := formatCompactFloat(bidTotal)
+		totalStr := format.CompactFloat(bidTotal)
 		for col, text := range []string{price, sz, totalStr} {
 			cell := tview.NewTableCell(ui.obCell("[green]", text)).
 				SetSelectable(false).

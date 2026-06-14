@@ -1,6 +1,7 @@
-package main
+package ticker
 
 import (
+	"crypto-ticker/internal/format"
 	"fmt"
 	"math"
 )
@@ -132,11 +133,11 @@ func buildIndicatorLine(candles []klineCandle) string {
 
 	ema20 := calcEMA(closes, 20)
 	if !math.IsNaN(ema20) {
-		parts = append(parts, "EMA20 "+formatCompactFloat(ema20))
+		parts = append(parts, "EMA20 "+format.CompactFloat(ema20))
 	}
 	ema50 := calcEMA(closes, 50)
 	if !math.IsNaN(ema50) {
-		parts = append(parts, "EMA50 "+formatCompactFloat(ema50))
+		parts = append(parts, "EMA50 "+format.CompactFloat(ema50))
 	}
 	rsi14 := calcRSI(closes, 14)
 	if !math.IsNaN(rsi14) {
@@ -145,7 +146,7 @@ func buildIndicatorLine(candles []klineCandle) string {
 
 	upper, _, lower := calcBB(closes, 20, 2)
 	if !math.IsNaN(upper) {
-		parts = append(parts, fmt.Sprintf("BB↑ %s BB↓ %s", formatCompactFloat(upper), formatCompactFloat(lower)))
+		parts = append(parts, fmt.Sprintf("BB↑ %s BB↓ %s", format.CompactFloat(upper), format.CompactFloat(lower)))
 	}
 
 	ml, sl, hist := calcMACD(closes)

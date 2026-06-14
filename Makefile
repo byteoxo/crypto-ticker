@@ -5,7 +5,7 @@ BINARY := crypto
 all: build
 
 build:
-	go build -o $(BINARY) .
+	go build -o $(BINARY) ./cmd/crypto-ticker
 
 run: build
 	./$(BINARY)

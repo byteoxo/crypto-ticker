@@ -1,4 +1,4 @@
-package main
+package ticker
 
 import (
 	"encoding/json"

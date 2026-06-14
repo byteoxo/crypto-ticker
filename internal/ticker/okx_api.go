@@ -1,4 +1,4 @@
-package main
+package ticker
 
 // OKX REST API helpers (API v5).
 //
@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto-ticker/internal/symbol"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -133,9 +134,9 @@ func okxPrivateRequest(ctx context.Context, client *http.Client, cfg config, met
 func fetchKlinesOKX(ctx context.Context, client *http.Client, baseURL, compactSymbol, interval string, limit int, panel panelMode) ([]klineCandle, error) {
 	var instID string
 	if panel == panelFutures {
-		instID = okxSwapInstID(compactSymbol)
+		instID = symbol.OKXSwapInstID(compactSymbol)
 	} else {
-		instID = okxSpotInstID(compactSymbol)
+		instID = symbol.OKXSpotInstID(compactSymbol)
 	}
 	if instID == "" {
 		return nil, fmt.Errorf("okx: empty instrument for %s", compactSymbol)
@@ -204,9 +205,9 @@ func fetchKlinesOKX(ctx context.Context, client *http.Client, baseURL, compactSy
 func fetchOrderBookOKX(ctx context.Context, baseURL, compactSymbol string, panel panelMode) (orderBookResponse, error) {
 	var instID string
 	if panel == panelFutures {
-		instID = okxSwapInstID(compactSymbol)
+		instID = symbol.OKXSwapInstID(compactSymbol)
 	} else {
-		instID = okxSpotInstID(compactSymbol)
+		instID = symbol.OKXSpotInstID(compactSymbol)
 	}
 	path := okxAPIPrefix + "/market/books?" + url.Values{
 		"instId": {instID},
@@ -255,7 +256,7 @@ func fetchOrderBookOKX(ctx context.Context, baseURL, compactSymbol string, panel
 func runOKXMarketStatsLoop(ctx context.Context, client *http.Client, cfg config, state *appState, notify func()) {
 	fetch := func() {
 		for _, sym := range cfg.Symbols {
-			instID := okxSwapInstID(sym)
+			instID := symbol.OKXSwapInstID(sym)
 			if ls, err := fetchOKXLongShortRatio(ctx, client, cfg.RESTBase, instID); err == nil {
 				state.setLongShortRatio(ls)
 			}
@@ -276,7 +277,7 @@ func runOKXMarketStatsLoop(ctx context.Context, client *http.Client, cfg config,
 }
 
 func fetchOKXLongShortRatio(ctx context.Context, client *http.Client, baseURL, instID string) (longShortRatioData, error) {
-	ccy := okxRubikCCYFromInstID(instID)
+	ccy := symbol.OKXRubikCCYFromInstID(instID)
 	if ccy == "" {
 		return longShortRatioData{}, fmt.Errorf("okx: cannot derive rubik ccy from %s", instID)
 	}
@@ -330,7 +331,7 @@ func fetchOKXLongShortRatio(ctx context.Context, client *http.Client, baseURL, i
 		shortPct = 1 / (lsr + 1)
 	}
 	return longShortRatioData{
-		Symbol:       okxCompactFromInstID(instID),
+		Symbol:       symbol.OKXCompactFromInstID(instID),
 		Ratio:        lsr,
 		LongAccount:  longPct,
 		ShortAccount: shortPct,
@@ -424,7 +425,7 @@ func fetchOKXPositions(ctx context.Context, client *http.Client, cfg config) ([]
 		ut, _ := strconv.ParseInt(item.UTime, 10, 64)
 
 		out = append(out, positionState{
-			Symbol:           okxCompactFromInstID(item.InstID),
+			Symbol:           symbol.OKXCompactFromInstID(item.InstID),
 			Side:             side,
 			Size:             size,
 			EntryPrice:       entry,
@@ -465,7 +466,7 @@ func fetchOKXSpotBalances(ctx context.Context, client *http.Client, cfg config) 
 		return nil, err
 	}
 
-	allowed := allowedSpotAssets(okxSpotBalanceFilterAssets(cfg.SpotSymbols))
+	allowed := symbol.AllowedSpotAssets(symbol.OKXSpotBalanceFilterAssets(cfg.SpotSymbols))
 	out := make([]spotBalance, 0)
 	for _, bucket := range payload {
 		for _, item := range bucket.Details {
@@ -485,7 +486,7 @@ func fetchOKXSpotBalances(ctx context.Context, client *http.Client, cfg config) 
 			if total <= 0 {
 				continue
 			}
-			ps := spotSymbolToTicker(asset)
+			ps := symbol.SpotSymbolToTicker(asset)
 			out = append(out, spotBalance{
 				Asset:          asset,
 				Free:           free,
@@ -538,7 +539,7 @@ func fetchOKXPendingOrders(ctx context.Context, client *http.Client, cfg config,
 		oid, _ := strconv.ParseInt(item.OrdID, 10, 64)
 		side := strings.ToUpper(item.Side)
 		out = append(out, openOrder{
-			Symbol:      okxCompactFromInstID(item.InstID),
+			Symbol:      symbol.OKXCompactFromInstID(item.InstID),
 			OrderID:     oid,
 			Side:        side,
 			Type:        strings.ToUpper(item.OrdType),
@@ -554,7 +555,7 @@ func fetchOKXPendingOrders(ctx context.Context, client *http.Client, cfg config,
 }
 
 func placeOKXFuturesLimitOrder(ctx context.Context, client *http.Client, cfg config, compactSymbol string, side string, priceStr, qtyStr string) (openOrder, error) {
-	instID := okxSwapInstID(compactSymbol)
+	instID := symbol.OKXSwapInstID(compactSymbol)
 	okSide := strings.ToLower(strings.TrimSpace(side))
 	switch strings.ToUpper(strings.TrimSpace(side)) {
 	case "BUY":
@@ -628,7 +629,7 @@ func placeOKXFuturesLimitOrder(ctx context.Context, client *http.Client, cfg con
 	t64, _ := strconv.ParseInt(p.CTime, 10, 64)
 	oid, _ := strconv.ParseInt(p.OrdID, 10, 64)
 	return openOrder{
-		Symbol:      okxCompactFromInstID(p.InstID),
+		Symbol:      symbol.OKXCompactFromInstID(p.InstID),
 		OrderID:     oid,
 		Side:        strings.ToUpper(p.Side),
 		Type:        strings.ToUpper(p.OrdType),
@@ -641,7 +642,7 @@ func placeOKXFuturesLimitOrder(ctx context.Context, client *http.Client, cfg con
 }
 
 func cancelOKXFuturesOrder(ctx context.Context, client *http.Client, cfg config, compactSymbol string, orderID int64) error {
-	instID := okxSwapInstID(compactSymbol)
+	instID := symbol.OKXSwapInstID(compactSymbol)
 	bodyMap := map[string]string{
 		"instId": instID,
 		"ordId":  strconv.FormatInt(orderID, 10),
@@ -680,7 +681,7 @@ func cancelOKXFuturesOrder(ctx context.Context, client *http.Client, cfg config,
 }
 
 func amendOKXFuturesOrderPrice(ctx context.Context, client *http.Client, cfg config, compactSymbol string, orderID int64, newPrice string) error {
-	instID := okxSwapInstID(compactSymbol)
+	instID := symbol.OKXSwapInstID(compactSymbol)
 	bodyMap := map[string]string{
 		"instId": instID,
 		"ordId":  strconv.FormatInt(orderID, 10),

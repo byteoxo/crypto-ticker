@@ -1,4 +1,4 @@
-package main
+package ticker
 
 // Bitget REST API v2 (USDT-M mix + spot).
 //
@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"crypto-ticker/internal/symbol"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -439,7 +440,7 @@ func fetchBitgetSpotBalances(ctx context.Context, client *http.Client, cfg confi
 		return nil, err
 	}
 
-	allowed := allowedSpotAssets(cfg.SpotSymbols)
+	allowed := symbol.AllowedSpotAssets(cfg.SpotSymbols)
 	out := make([]spotBalance, 0)
 	for _, item := range payload {
 		asset := strings.ToUpper(strings.TrimSpace(item.Coin))
@@ -458,7 +459,7 @@ func fetchBitgetSpotBalances(ctx context.Context, client *http.Client, cfg confi
 		if total <= 0 {
 			continue
 		}
-		ps := spotSymbolToTicker(asset)
+		ps := symbol.SpotSymbolToTicker(asset)
 		out = append(out, spotBalance{
 			Asset:          asset,
 			Free:           free,
@@ -489,16 +490,16 @@ func fetchBitgetPendingOrders(ctx context.Context, client *http.Client, cfg conf
 
 	if panel == panelSpot {
 		var spotList []struct {
-			Symbol    string `json:"symbol"`
-			OrderId   string `json:"orderId"`
-			Side      string `json:"side"`
-			OrderType string `json:"orderType"`
-			Price     string `json:"price"`
-			Size      string `json:"size"`
+			Symbol     string `json:"symbol"`
+			OrderId    string `json:"orderId"`
+			Side       string `json:"side"`
+			OrderType  string `json:"orderType"`
+			Price      string `json:"price"`
+			Size       string `json:"size"`
 			BaseVolume string `json:"baseVolume"`
-			Status    string `json:"status"`
-			Force     string `json:"force"`
-			CTime     string `json:"cTime"`
+			Status     string `json:"status"`
+			Force      string `json:"force"`
+			CTime      string `json:"cTime"`
 		}
 		if err := decodeBitgetJSON(respBody, &spotList); err != nil {
 			return nil, err
@@ -508,16 +509,16 @@ func fetchBitgetPendingOrders(ctx context.Context, client *http.Client, cfg conf
 
 	var wrapped struct {
 		EntrustedList []struct {
-			Symbol      string `json:"symbol"`
-			Size        string `json:"size"`
-			OrderId     string `json:"orderId"`
-			BaseVolume  string `json:"baseVolume"`
-			Price       string `json:"price"`
-			Status      string `json:"status"`
-			Side        string `json:"side"`
-			Force       string `json:"force"`
-			OrderType   string `json:"orderType"`
-			CTime       string `json:"cTime"`
+			Symbol     string `json:"symbol"`
+			Size       string `json:"size"`
+			OrderId    string `json:"orderId"`
+			BaseVolume string `json:"baseVolume"`
+			Price      string `json:"price"`
+			Status     string `json:"status"`
+			Side       string `json:"side"`
+			Force      string `json:"force"`
+			OrderType  string `json:"orderType"`
+			CTime      string `json:"cTime"`
 		} `json:"entrustedList"`
 	}
 	if err := decodeBitgetJSON(respBody, &wrapped); err != nil {

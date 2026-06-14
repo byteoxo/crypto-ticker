@@ -1,10 +1,10 @@
-package main
+package symbol
 
 import "strings"
 
-// okxCompactFromInstID maps an OKX instrument id (e.g. ETH-USDT-SWAP, ETH-USDT)
+// OKXCompactFromInstID maps an OKX instrument id (e.g. ETH-USDT-SWAP, ETH-USDT)
 // to the compact symbol key used in app state (ETHUSDT).
-func okxCompactFromInstID(instID string) string {
+func OKXCompactFromInstID(instID string) string {
 	instID = strings.TrimSpace(instID)
 	if instID == "" {
 		return ""
@@ -15,13 +15,13 @@ func okxCompactFromInstID(instID string) string {
 	return strings.ToUpper(s)
 }
 
-// okxNormalizeSymbol collapses Gate-style separators (e.g. BTC_USDT) so suffix parsing yields BTCUSDT, not BTC_.
-func okxNormalizeSymbol(compact string) string {
+// OKXNormalizeSymbol collapses Gate-style separators (e.g. BTC_USDT) so suffix parsing yields BTCUSDT, not BTC_.
+func OKXNormalizeSymbol(compact string) string {
 	return strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(compact, "_", "")))
 }
 
-func okxSwapInstID(compact string) string {
-	compact = okxNormalizeSymbol(compact)
+func OKXSwapInstID(compact string) string {
+	compact = OKXNormalizeSymbol(compact)
 	if compact == "" {
 		return ""
 	}
@@ -46,8 +46,8 @@ func okxSwapInstID(compact string) string {
 	return compact + "-SWAP"
 }
 
-// okxRubikCCYFromInstID is the base asset for Rubik statistics (e.g. BTC for BTC-USDT-SWAP).
-func okxRubikCCYFromInstID(instID string) string {
+// OKXRubikCCYFromInstID is the base asset for Rubik statistics (e.g. BTC for BTC-USDT-SWAP).
+func OKXRubikCCYFromInstID(instID string) string {
 	parts := strings.Split(strings.TrimSpace(instID), "-")
 	if len(parts) >= 1 && parts[0] != "" {
 		return parts[0]
@@ -55,8 +55,8 @@ func okxRubikCCYFromInstID(instID string) string {
 	return ""
 }
 
-func okxSpotInstID(compact string) string {
-	compact = okxNormalizeSymbol(compact)
+func OKXSpotInstID(compact string) string {
+	compact = OKXNormalizeSymbol(compact)
 	if compact == "" {
 		return ""
 	}
@@ -78,24 +78,24 @@ func okxSpotInstID(compact string) string {
 	return compact
 }
 
-// okxSpotBalanceFilterAssets maps compact spot pair keys (e.g. ETHUSDT from ETH-USDT)
+// OKXSpotBalanceFilterAssets maps compact spot pair keys (e.g. ETHUSDT from ETH-USDT)
 // to base asset codes used in OKX balance payloads (ccy field).
-func okxSpotBalanceFilterAssets(compactPairs []string) []string {
+func OKXSpotBalanceFilterAssets(compactPairs []string) []string {
 	out := make([]string, 0, len(compactPairs))
 	for _, s := range compactPairs {
 		s = strings.ToUpper(strings.TrimSpace(s))
 		if s == "" {
 			continue
 		}
-		base := okxSpotBalanceAssetFromCompact(s)
+		base := OKXSpotBalanceAssetFromCompact(s)
 		if base != "" {
 			out = append(out, base)
 		}
 	}
-	return normalizeSymbolList(out)
+	return NormalizeSymbolList(out)
 }
 
-func okxSpotBalanceAssetFromCompact(compact string) string {
+func OKXSpotBalanceAssetFromCompact(compact string) string {
 	if compact == "" {
 		return ""
 	}

@@ -1,9 +1,10 @@
-package main
+package ticker
 
 import (
 	"context"
+	"crypto-ticker/internal/format"
+	"crypto-ticker/internal/symbol"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +16,7 @@ const (
 	// Binance Futures
 	// USD-M futures market streams (ticker, markPrice, kline, …) must use the routed /market base;
 	// unrouted wss://fstream.binance.com/stream only receives /public streams (Binance WS migration).
-	defaultWSBaseURL = "wss://fstream.binance.com/market"
+	defaultWSBaseURL   = "wss://fstream.binance.com/market"
 	defaultRESTBaseURL = "https://fapi.binance.com"
 	futuresKlinePath   = "/fapi/v1/klines"
 	positionRiskPath   = "/fapi/v3/positionRisk"
@@ -88,21 +89,17 @@ func spotWSBaseURL(cfg config) string {
 	}
 }
 
-func main() {
-	log.SetFlags(0)
-	log.SetPrefix("")
-
+// Run starts the terminal ticker application until exit or fatal error.
+func Run() error {
 	cfg := mustLoadConfig()
-	loc := mustLoadLocation(cfg.TZ)
+	loc := format.MustLoadLocation(cfg.TZ)
 	client := &http.Client{Timeout: cfg.Timeout}
 	state := newAppState(cfg)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := run(ctx, client, cfg, loc, state); err != nil {
-		log.Fatalf("fatal: %v", err)
-	}
+	return run(ctx, client, cfg, loc, state)
 }
 
 func run(ctx context.Context, client *http.Client, cfg config, loc *time.Location, state *appState) error {
@@ -121,12 +118,12 @@ func run(ctx context.Context, client *http.Client, cfg config, loc *time.Locatio
 	_ = spotWSBase
 
 	if cfg.hasSpot() {
-		state.setSpotRows(spotSymbolsToTickers(cfg.SpotSymbols))
+		state.setSpotRows(symbol.SpotSymbolsToTickers(cfg.SpotSymbols))
 		if err := loadInitialSpotBalances(ctx, client, cfg, state); err != nil {
 			state.setSpotAccountError(fmt.Sprintf("spot balances init failed: %v", err))
 		}
 		if len(cfg.SpotSymbols) > 0 {
-			spotTickers := spotSymbolsToTickers(cfg.SpotSymbols)
+			spotTickers := symbol.SpotSymbolsToTickers(cfg.SpotSymbols)
 			if cfg.chartsEnabled() && len(spotTickers) > 0 && (cfg.DefaultPanel == string(panelSpot) || len(cfg.Symbols) == 0) {
 				if err := loadChartHistoryForSymbol(ctx, client, spotRESTBase, panelSpot, spotTickers[0], cfg.ChartLimit, state); err != nil {
 					state.setSpotError(fmt.Sprintf("spot chart init failed: %v", err))
@@ -156,10 +153,10 @@ func run(ctx context.Context, client *http.Client, cfg config, loc *time.Locatio
 		for _, position := range positions {
 			combined = append(combined, position.Symbol)
 		}
-		return normalizeSymbolList(combined)
+		return symbol.NormalizeSymbolList(combined)
 	}
 	getSpotTickerSymbols := func() []string {
-		return spotSymbolsToTickers(cfg.SpotSymbols)
+		return symbol.SpotSymbolsToTickers(cfg.SpotSymbols)
 	}
 
 	changeInterval := func() {
@@ -214,7 +211,7 @@ func run(ctx context.Context, client *http.Client, cfg config, loc *time.Locatio
 
 		switch panel {
 		case panelSpot:
-			symbols = spotSymbolsToTickers(cfg.SpotSymbols)
+			symbols = symbol.SpotSymbolsToTickers(cfg.SpotSymbols)
 			baseURL = spotRESTBase
 			waitingMessage = "Spot panel is not configured"
 			switchMessage = "switching spot chart to %s..."
@@ -235,7 +232,7 @@ func run(ctx context.Context, client *http.Client, cfg config, loc *time.Locatio
 		}
 
 		current := getChartSymbol()
-		idx := indexOfSymbol(symbols, current)
+		idx := symbol.IndexOfSymbol(symbols, current)
 		if idx < 0 {
 			idx = 0
 		}

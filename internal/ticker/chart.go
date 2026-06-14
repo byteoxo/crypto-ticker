@@ -1,6 +1,7 @@
-package main
+package ticker
 
 import (
+	"crypto-ticker/internal/format"
 	"fmt"
 	"math"
 	"strings"
@@ -92,8 +93,8 @@ func buildChartText(candles []klineCandle, noColor bool) string {
 			color = bearColorTag
 		}
 
-		upper := minInt(openY, closeY)
-		lower := maxInt(openY, closeY)
+		upper := format.MinInt(openY, closeY)
+		lower := format.MaxInt(openY, closeY)
 
 		// Wick: │ spans full terminal-row height, so it connects flush to █
 		// above and below with no gap.

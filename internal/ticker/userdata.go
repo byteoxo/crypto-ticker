@@ -1,7 +1,8 @@
-package main
+package ticker
 
 import (
 	"context"
+	"crypto-ticker/internal/symbol"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -201,7 +202,7 @@ func consumeSpotUserDataStream(ctx context.Context, client *http.Client, cfg con
 		return fmt.Errorf("subscribe spot user data stream: %w", err)
 	}
 
-	allowed := allowedSpotAssets(cfg.SpotSymbols)
+	allowed := symbol.AllowedSpotAssets(cfg.SpotSymbols)
 	pingTicker := time.NewTicker(cfg.Timeout)
 	defer pingTicker.Stop()
 

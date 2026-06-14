@@ -1,7 +1,7 @@
 default: build
 
 build:
-    go build -o crypto .
+    go build -o crypto ./cmd/crypto-ticker
 
 run: build
     ./crypto

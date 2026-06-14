@@ -1,4 +1,4 @@
-package main
+package ticker
 
 // Bitget WebSocket API v2 public: wss://ws.bitget.com/v2/ws/public
 

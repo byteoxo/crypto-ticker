@@ -1,4 +1,4 @@
-package main
+package format
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func formatCompactFloat(value float64) string {
+func CompactFloat(value float64) string {
 	abs := math.Abs(value)
 	precision := 6
 	switch {
@@ -23,8 +23,8 @@ func formatCompactFloat(value float64) string {
 	return trimTrailingZeros(strconv.FormatFloat(value, 'f', precision, 64))
 }
 
-func formatSignedCompactFloat(value float64) string {
-	formatted := formatCompactFloat(math.Abs(value))
+func SignedCompactFloat(value float64) string {
+	formatted := CompactFloat(math.Abs(value))
 	switch {
 	case value > 0:
 		return "+" + formatted
@@ -35,54 +35,35 @@ func formatSignedCompactFloat(value float64) string {
 	}
 }
 
-func formatOptionalCompactFloat(value float64) string {
+func OptionalCompactFloat(value float64) string {
 	if math.Abs(value) < 1e-12 {
 		return "-"
 	}
-	return formatCompactFloat(value)
+	return CompactFloat(value)
 }
 
-func trimTrailingZeros(value string) string {
-	if !strings.Contains(value, ".") {
-		return value
-	}
-	value = strings.TrimRight(value, "0")
-	value = strings.TrimRight(value, ".")
-	if value == "-0" || value == "+0" || value == "" {
-		return "0"
-	}
-	return value
-}
-
-func formatDelta(row rowState) string {
-	if !row.HasPrev {
-		return "-"
-	}
-	return fmt.Sprintf("%+.6f (%+.2f%%)", row.Delta, row.DeltaPct)
-}
-
-func formatEpoch(timestampMS int64, loc *time.Location) string {
+func Epoch(timestampMS int64, loc *time.Location) string {
 	if timestampMS <= 0 {
 		return "-"
 	}
 	return time.UnixMilli(timestampMS).In(loc).Format("2006-01-02 15:04:05.000 MST")
 }
 
-func formatOptionalTime(t time.Time, loc *time.Location) string {
+func OptionalTime(t time.Time, loc *time.Location) string {
 	if t.IsZero() {
 		return "-"
 	}
-	return formatTime(t, loc, true)
+	return Time(t, loc, true)
 }
 
-func formatTime(t time.Time, loc *time.Location, millis bool) string {
+func Time(t time.Time, loc *time.Location, millis bool) string {
 	if millis {
 		return t.In(loc).Format("2006-01-02 15:04:05.000 MST")
 	}
 	return t.In(loc).Format("2006-01-02 15:04:05 MST")
 }
 
-func mustLoadLocation(name string) *time.Location {
+func MustLoadLocation(name string) *time.Location {
 	loc, err := time.LoadLocation(name)
 	if err != nil {
 		log.Fatalf("fatal: load timezone %q: %v", name, err)
@@ -90,8 +71,8 @@ func mustLoadLocation(name string) *time.Location {
 	return loc
 }
 
-// formatCompactNumber formats large numbers with K/M/B suffixes (e.g. 1234567 → "1.23M").
-func formatCompactNumber(v float64) string {
+// CompactNumber formats large numbers with K/M/B suffixes (e.g. 1234567 → "1.23M").
+func CompactNumber(v float64) string {
 	abs := math.Abs(v)
 	switch {
 	case abs >= 1e9:
@@ -105,16 +86,28 @@ func formatCompactNumber(v float64) string {
 	}
 }
 
-func minInt(a, b int) int {
+func MinInt(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func maxInt(a, b int) int {
+func MaxInt(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
+}
+
+func trimTrailingZeros(value string) string {
+	if !strings.Contains(value, ".") {
+		return value
+	}
+	value = strings.TrimRight(value, "0")
+	value = strings.TrimRight(value, ".")
+	if value == "-0" || value == "+0" || value == "" {
+		return "0"
+	}
+	return value
 }

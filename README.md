@@ -52,7 +52,7 @@ Download the latest release for your platform from the [Releases](https://github
 ```bash
 git clone https://github.com/byteoxo/crypto-ticker.git
 cd crypto-ticker
-go build -o crypto-ticker .
+go build -o crypto-ticker ./cmd/crypto-ticker
 ./crypto-ticker
 ```
 
@@ -64,15 +64,15 @@ Config resolution (first match wins):
 
 1. `./config.toml` — overrides everything below
 2. `~/.config/crypto-ticker/config.toml`
-3. **Built-in default** — Binance settings from [config.example.binance.toml](./config.example.binance.toml), embedded in the binary at compile time (no config file required to run)
+3. **Built-in default** — Binance settings from [configs/config.example.binance.toml](./configs/config.example.binance.toml), embedded in the binary at compile time (no config file required to run)
 
 If a user config file is present but invalid, or any required field is missing, the program exits with an error.
 
-Example configs are included:
-- Binance: [config.example.binance.toml](./config.example.binance.toml)
-- Gate.io: [config.example.gate.toml](./config.example.gate.toml)
-- OKX: [config.example.okx.toml](./config.example.okx.toml)
-- Bitget: [config.example.bitget.toml](./config.example.bitget.toml)
+Example configs are included in [configs/](./configs/):
+- Binance: [configs/config.example.binance.toml](./configs/config.example.binance.toml)
+- Gate.io: [configs/config.example.gate.toml](./configs/config.example.gate.toml)
+- OKX: [configs/config.example.okx.toml](./configs/config.example.okx.toml)
+- Bitget: [configs/config.example.bitget.toml](./configs/config.example.bitget.toml)
 
 ## Config Fields
 
@@ -135,7 +135,7 @@ Defaults applied automatically:
 - REST: `https://api.bitget.com`
 - WS: `wss://ws.bitget.com/v2/ws/public` (futures and spot)
 
-See [config.example.bitget.toml](./config.example.bitget.toml).
+See [configs/config.example.bitget.toml](./configs/config.example.bitget.toml).
 
 ## API Key Setup (Optional)
 

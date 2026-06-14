@@ -1,4 +1,4 @@
-package main
+package ticker
 
 // Gate.io REST API helpers.
 //

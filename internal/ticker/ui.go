@@ -1,7 +1,8 @@
-package main
+package ticker
 
 import (
 	"context"
+	"crypto-ticker/internal/format"
 	"fmt"
 	"net/http"
 	"strings"
@@ -442,9 +443,9 @@ func (ui *uiModel) refresh() {
 		strings.Join(ui.cfg.Symbols, ","),
 		strings.Join(ui.cfg.SpotSymbols, ","),
 		ui.cfg.ConfigPath,
-		formatTime(time.Now(), ui.loc, false),
-		formatTime(startedAt, ui.loc, false),
-		formatOptionalTime(marketUpdate, ui.loc),
+		format.Time(time.Now(), ui.loc, false),
+		format.Time(startedAt, ui.loc, false),
+		format.OptionalTime(marketUpdate, ui.loc),
 	)
 	if modalMessage != "" && !ui.cfg.chartsEnabled() {
 		ui.header.SetText(fmt.Sprintf("%s\n\n%s\n\n%s",
@@ -497,7 +498,7 @@ func (ui *uiModel) accountStatusText(accountEnabled bool, accountError string, a
 	if accountLastUpdate.IsZero() {
 		return ui.colorize("yellow", "waiting for initial sync")
 	}
-	return ui.colorize("green", fmt.Sprintf("ok | last sync %s", formatOptionalTime(accountLastUpdate, ui.loc)))
+	return ui.colorize("green", fmt.Sprintf("ok | last sync %s", format.OptionalTime(accountLastUpdate, ui.loc)))
 }
 
 func (ui *uiModel) renderTable(rows []rowState) {
@@ -534,7 +535,7 @@ func (ui *uiModel) renderTable(rows []rowState) {
 		oiText := "-"
 		oiDir := 0
 		if oi, ok := ui.state.getOpenInterest(row.Symbol); ok && oi.OpenInterest > 0 {
-			oiText = formatCompactNumber(oi.OpenInterest)
+			oiText = format.CompactNumber(oi.OpenInterest)
 			if oi.PrevOpenInterest > 0 {
 				oiDir = compareFloat(oi.OpenInterest, oi.PrevOpenInterest)
 				if oiDir > 0 {
@@ -603,7 +604,7 @@ func (ui *uiModel) renderPositions(positions []positionState, accountEnabled boo
 	if len(positions) == 0 {
 		message := "No open positions"
 		if !accountLastUpdate.IsZero() {
-			message = fmt.Sprintf("No open positions | last sync %s", formatOptionalTime(accountLastUpdate, ui.loc))
+			message = fmt.Sprintf("No open positions | last sync %s", format.OptionalTime(accountLastUpdate, ui.loc))
 		}
 		ui.positions.SetCell(1, 0, tview.NewTableCell(message).SetSelectable(false).SetExpansion(1).SetBackgroundColor(tcell.ColorDefault))
 		return
@@ -617,11 +618,11 @@ func (ui *uiModel) renderPositions(positions []positionState, accountEnabled boo
 
 		ui.positions.SetCell(i+1, 0, tview.NewTableCell(position.Symbol).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.positions.SetCell(i+1, 1, tview.NewTableCell(ui.colorBySide(position.Side, position.Side)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 2, tview.NewTableCell(formatCompactFloat(position.Size)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 3, tview.NewTableCell(formatCompactFloat(position.EntryPrice)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 4, tview.NewTableCell(formatCompactFloat(position.MarkPrice)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 5, tview.NewTableCell(ui.colorByChange(compareFloat(position.UnrealizedPnL, 0), formatSignedCompactFloat(position.UnrealizedPnL))).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 6, tview.NewTableCell(formatOptionalCompactFloat(position.LiquidationPrice)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 2, tview.NewTableCell(format.CompactFloat(position.Size)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 3, tview.NewTableCell(format.CompactFloat(position.EntryPrice)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 4, tview.NewTableCell(format.CompactFloat(position.MarkPrice)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 5, tview.NewTableCell(ui.colorByChange(compareFloat(position.UnrealizedPnL, 0), format.SignedCompactFloat(position.UnrealizedPnL))).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 6, tview.NewTableCell(format.OptionalCompactFloat(position.LiquidationPrice)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.positions.SetCell(i+1, 7, tview.NewTableCell(mode).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 	}
 }
@@ -679,11 +680,11 @@ func (ui *uiModel) renderSpotBalances(balances []spotBalance, spotAccountError s
 	}
 	for i, balance := range balances {
 		ui.positions.SetCell(i+1, 0, tview.NewTableCell(balance.Asset).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 1, tview.NewTableCell(formatCompactFloat(balance.Free)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 2, tview.NewTableCell(formatCompactFloat(balance.Locked)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 3, tview.NewTableCell(formatCompactFloat(balance.Total)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 1, tview.NewTableCell(format.CompactFloat(balance.Free)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 2, tview.NewTableCell(format.CompactFloat(balance.Locked)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 3, tview.NewTableCell(format.CompactFloat(balance.Total)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.positions.SetCell(i+1, 4, tview.NewTableCell(balance.QuoteValueText).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
-		ui.positions.SetCell(i+1, 5, tview.NewTableCell(formatOptionalCompactFloat(balance.PriceValue)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 5, tview.NewTableCell(format.OptionalCompactFloat(balance.PriceValue)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 	}
 }
 
@@ -699,9 +700,9 @@ func buildSpotSummary(balances []spotBalance) string {
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("assets %d\n", len(balances)))
-	b.WriteString(fmt.Sprintf("total usdt %s\n\n", formatCompactFloat(total)))
+	b.WriteString(fmt.Sprintf("total usdt %s\n\n", format.CompactFloat(total)))
 	for _, balance := range balances {
-		b.WriteString(fmt.Sprintf("%-6s total %-12s usdt %-12s\n", balance.Asset, formatCompactFloat(balance.Total), balance.QuoteValueText))
+		b.WriteString(fmt.Sprintf("%-6s total %-12s usdt %-12s\n", balance.Asset, format.CompactFloat(balance.Total), balance.QuoteValueText))
 	}
 	return b.String()
 }
@@ -788,6 +789,13 @@ func escapeTView(text string) string {
 	return replacer.Replace(text)
 }
 
+func formatDelta(row rowState) string {
+	if !row.HasPrev {
+		return "-"
+	}
+	return fmt.Sprintf("%+.6f (%+.2f%%)", row.Delta, row.DeltaPct)
+}
+
 func printSnapshot(cfg config, loc *time.Location, state *appState) {
 	rows, spotRows, chart, positions, spotBalances, chartSymbol, chartInterval, lastError, spotError, accountError, spotAccountError, startedAt, lastUpdate, spotLastUpdate, accountLastUpdate, spotAccountLastUpdate, accountEnabled, panel, _ := state.snapshot()
 
@@ -796,9 +804,9 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 		strings.Join(cfg.Symbols, ","),
 		strings.Join(cfg.SpotSymbols, ","),
 		cfg.ConfigPath,
-		formatTime(startedAt, loc, false),
-		formatOptionalTime(lastUpdate, loc),
-		formatOptionalTime(spotLastUpdate, loc),
+		format.Time(startedAt, loc, false),
+		format.OptionalTime(lastUpdate, loc),
+		format.OptionalTime(spotLastUpdate, loc),
 	)
 	if lastError == "" {
 		fmt.Println("futures status: ok")
@@ -812,12 +820,12 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 	}
 	if accountEnabled {
 		if accountError == "" {
-			fmt.Printf("futures account: ok | last sync: %s\n", formatOptionalTime(accountLastUpdate, loc))
+			fmt.Printf("futures account: ok | last sync: %s\n", format.OptionalTime(accountLastUpdate, loc))
 		} else {
 			fmt.Printf("futures account: %s\n", accountError)
 		}
 		if spotAccountError == "" {
-			fmt.Printf("spot account: ok | last sync: %s\n", formatOptionalTime(spotAccountLastUpdate, loc))
+			fmt.Printf("spot account: ok | last sync: %s\n", format.OptionalTime(spotAccountLastUpdate, loc))
 		} else {
 			fmt.Printf("spot account: %s\n", spotAccountError)
 		}
@@ -831,7 +839,7 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 			if price == "" {
 				price = "-"
 			}
-			fmt.Printf("%-14s %-18s %-18s %-26s %-26s\n", row.Symbol, price, formatDelta(row), formatEpoch(row.ExchangeTime, loc), formatOptionalTime(row.LocalTime, loc))
+			fmt.Printf("%-14s %-18s %-18s %-26s %-26s\n", row.Symbol, price, formatDelta(row), format.Epoch(row.ExchangeTime, loc), format.OptionalTime(row.LocalTime, loc))
 		}
 	}
 	if len(spotRows) > 0 {
@@ -842,7 +850,7 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 			if price == "" {
 				price = "-"
 			}
-			fmt.Printf("%-14s %-18s %-18s %-26s %-26s\n", row.Symbol, price, formatDelta(row), formatEpoch(row.ExchangeTime, loc), formatOptionalTime(row.LocalTime, loc))
+			fmt.Printf("%-14s %-18s %-18s %-26s %-26s\n", row.Symbol, price, formatDelta(row), format.Epoch(row.ExchangeTime, loc), format.OptionalTime(row.LocalTime, loc))
 		}
 	}
 	if len(positions) > 0 {
@@ -853,14 +861,14 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 			if position.Leverage != "" {
 				mode = fmt.Sprintf("%s %sx", mode, position.Leverage)
 			}
-			fmt.Printf("%-12s %-8s %-12s %-12s %-12s %-12s %-12s %-12s\n", position.Symbol, position.Side, formatCompactFloat(position.Size), formatCompactFloat(position.EntryPrice), formatCompactFloat(position.MarkPrice), formatSignedCompactFloat(position.UnrealizedPnL), formatOptionalCompactFloat(position.LiquidationPrice), mode)
+			fmt.Printf("%-12s %-8s %-12s %-12s %-12s %-12s %-12s %-12s\n", position.Symbol, position.Side, format.CompactFloat(position.Size), format.CompactFloat(position.EntryPrice), format.CompactFloat(position.MarkPrice), format.SignedCompactFloat(position.UnrealizedPnL), format.OptionalCompactFloat(position.LiquidationPrice), mode)
 		}
 	}
 	if len(spotBalances) > 0 {
 		fmt.Println("\nSPOT BALANCES")
 		fmt.Printf("%-10s %-14s %-14s %-14s %-14s %-14s\n", "ASSET", "FREE", "LOCKED", "TOTAL", "USDT", "PRICE")
 		for _, balance := range spotBalances {
-			fmt.Printf("%-10s %-14s %-14s %-14s %-14s %-14s\n", balance.Asset, formatCompactFloat(balance.Free), formatCompactFloat(balance.Locked), formatCompactFloat(balance.Total), balance.QuoteValueText, formatOptionalCompactFloat(balance.PriceValue))
+			fmt.Printf("%-10s %-14s %-14s %-14s %-14s %-14s\n", balance.Asset, format.CompactFloat(balance.Free), format.CompactFloat(balance.Locked), format.CompactFloat(balance.Total), balance.QuoteValueText, format.OptionalCompactFloat(balance.PriceValue))
 		}
 	}
 	if len(chart) > 0 {

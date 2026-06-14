@@ -1,7 +1,8 @@
-package main
+package ticker
 
 import (
 	"context"
+	"crypto-ticker/internal/symbol"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -400,7 +401,7 @@ func parseWSMarkPriceFunding(data []byte) (fundingRate, error) {
 }
 
 func buildWSURL(baseURL string, symbols []string, chartSymbol, chartInterval string) string {
-	symbols = normalizeSymbolList(symbols)
+	symbols = symbol.NormalizeSymbolList(symbols)
 	streams := make([]string, 0, len(symbols)*2+1)
 	for _, symbol := range symbols {
 		lsym := strings.ToLower(symbol)

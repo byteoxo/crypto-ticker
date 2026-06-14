@@ -1,6 +1,7 @@
-package main
+package ticker
 
 import (
+	"crypto-ticker/internal/symbol"
 	_ "embed"
 	"fmt"
 	"log"
@@ -12,7 +13,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-//go:embed config.example.binance.toml
+//go:embed defaults/config.example.binance.toml
 var embeddedDefaultConfig []byte
 
 // embeddedConfigLabel is shown in the UI when the built-in default config is used.
@@ -181,8 +182,8 @@ func loadConfig() (config, error) {
 		return config{}, fmt.Errorf("config %s field %q must be one of %q, %q, %q, or %q", path, "exchange", "binance", "gate", "okx", "bitget")
 	}
 
-	symbols := normalizeSymbols(strings.Join(raw.Symbols, ","))
-	spotSymbols := normalizeSymbols(strings.Join(raw.SpotSymbols, ","))
+	symbols := symbol.NormalizeSymbols(strings.Join(raw.Symbols, ","))
+	spotSymbols := symbol.NormalizeSymbols(strings.Join(raw.SpotSymbols, ","))
 	if exchange == "binance" || exchange == "bitget" {
 		for i := range symbols {
 			symbols[i] = strings.ReplaceAll(symbols[i], "_", "")
@@ -193,21 +194,21 @@ func loadConfig() (config, error) {
 	}
 	if exchange == "okx" {
 		for i, rawSym := range symbols {
-			c := okxCompactFromInstID(rawSym)
+			c := symbol.OKXCompactFromInstID(rawSym)
 			if c == "" {
 				return config{}, fmt.Errorf("config %s exchange okx: invalid futures instrument %q in symbols", path, rawSym)
 			}
 			symbols[i] = c
 		}
 		for i, rawSym := range spotSymbols {
-			c := okxCompactFromInstID(rawSym)
+			c := symbol.OKXCompactFromInstID(rawSym)
 			if c == "" {
 				return config{}, fmt.Errorf("config %s exchange okx: invalid spot instrument %q in spot_symbols", path, rawSym)
 			}
 			spotSymbols[i] = c
 		}
-		symbols = normalizeSymbolList(symbols)
-		spotSymbols = normalizeSymbolList(spotSymbols)
+		symbols = symbol.NormalizeSymbolList(symbols)
+		spotSymbols = symbol.NormalizeSymbolList(spotSymbols)
 	}
 	if len(symbols) == 0 && len(spotSymbols) == 0 {
 		return config{}, fmt.Errorf("config %s must define at least one of %q or %q", path, "symbols", "spot_symbols")
@@ -342,7 +343,7 @@ func resolveUserConfigPath() (string, bool) {
 
 func isSpotTickerSymbolFunc(cfg config) func(string) bool {
 	spotSet := make(map[string]struct{}, len(cfg.SpotSymbols))
-	for _, symbol := range spotSymbolsToTickers(cfg.SpotSymbols) {
+	for _, symbol := range symbol.SpotSymbolsToTickers(cfg.SpotSymbols) {
 		spotSet[symbol] = struct{}{}
 	}
 	return func(symbol string) bool {
