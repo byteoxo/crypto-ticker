@@ -728,3 +728,109 @@ func amendOKXFuturesOrderPrice(ctx context.Context, client *http.Client, cfg con
 	var dummy []json.RawMessage
 	return decodeOKXJSON(respBody, &dummy)
 }
+
+func placeOKXSpotOrder(ctx context.Context, client *http.Client, cfg config, compactSymbol string, side string, priceStr, qtyStr string, market bool) (openOrder, error) {
+	instID := symbol.OKXSpotInstID(compactSymbol)
+	okSide := strings.ToLower(strings.TrimSpace(side))
+	switch strings.ToUpper(strings.TrimSpace(side)) {
+	case "BUY":
+		okSide = "buy"
+	case "SELL":
+		okSide = "sell"
+	}
+	if okSide != "buy" && okSide != "sell" {
+		return openOrder{}, fmt.Errorf("invalid side %s", side)
+	}
+	ordType := "limit"
+	if market {
+		ordType = "market"
+	}
+	bodyMap := map[string]string{
+		"instId":  instID,
+		"tdMode":  "cash",
+		"side":    okSide,
+		"ordType": ordType,
+		"sz":      qtyStr,
+	}
+	if !market {
+		bodyMap["px"] = priceStr
+	}
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return openOrder{}, err
+	}
+	respBody, err := okxPrivateRequest(ctx, client, cfg, http.MethodPost, okxAPIPrefix+"/trade/order", string(bodyBytes))
+	if err != nil {
+		return openOrder{}, err
+	}
+
+	var payload []struct {
+		OrdID   string `json:"ordId"`
+		InstID  string `json:"instId"`
+		Side    string `json:"side"`
+		OrdType string `json:"ordType"`
+		Px      string `json:"px"`
+		Sz      string `json:"sz"`
+		State   string `json:"state"`
+		CTime   string `json:"cTime"`
+	}
+	if err := decodeOKXJSON(respBody, &payload); err != nil {
+		return openOrder{}, err
+	}
+	if len(payload) == 0 {
+		return openOrder{}, fmt.Errorf("okx: empty spot order response")
+	}
+	p := payload[0]
+	price, _ := strconv.ParseFloat(p.Px, 64)
+	sz, _ := strconv.ParseFloat(p.Sz, 64)
+	t64, _ := strconv.ParseInt(p.CTime, 10, 64)
+	oid, _ := strconv.ParseInt(p.OrdID, 10, 64)
+	return openOrder{
+		Symbol:      symbol.OKXCompactFromInstID(p.InstID),
+		OrderID:     oid,
+		Side:        strings.ToUpper(p.Side),
+		Type:        strings.ToUpper(p.OrdType),
+		Price:       price,
+		OrigQty:     sz,
+		Status:      strings.ToUpper(p.State),
+		TimeInForce: "GTC",
+		Time:        t64,
+	}, nil
+}
+
+func cancelOKXSpotOrder(ctx context.Context, client *http.Client, cfg config, compactSymbol string, orderID int64) error {
+	instID := symbol.OKXSpotInstID(compactSymbol)
+	bodyMap := map[string]string{
+		"instId": instID,
+		"ordId":  strconv.FormatInt(orderID, 10),
+	}
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return err
+	}
+	respBody, err := okxPrivateRequest(ctx, client, cfg, http.MethodPost, okxAPIPrefix+"/trade/cancel-order", string(bodyBytes))
+	if err != nil {
+		return err
+	}
+	var dummy []json.RawMessage
+	return decodeOKXJSON(respBody, &dummy)
+}
+
+func amendOKXSpotOrderPrice(ctx context.Context, client *http.Client, cfg config, compactSymbol string, orderID int64, newPrice string) error {
+	instID := symbol.OKXSpotInstID(compactSymbol)
+	bodyMap := map[string]string{
+		"instId": instID,
+		"ordId":  strconv.FormatInt(orderID, 10),
+		"newPx":  newPrice,
+	}
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return err
+	}
+	respBody, err := okxPrivateRequest(ctx, client, cfg, http.MethodPost, okxAPIPrefix+"/trade/amend-order", string(bodyBytes))
+	if err != nil {
+		return err
+	}
+	var dummy []json.RawMessage
+	return decodeOKXJSON(respBody, &dummy)
+}

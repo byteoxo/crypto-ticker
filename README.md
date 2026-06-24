@@ -40,7 +40,9 @@
 
 ### Order form (press `u`, then `n`)
 
-Requires API credentials. All supported exchanges use the same futures order form:
+Requires API credentials. Order type follows the **Tab-selected panel** (futures vs spot). All exchanges use limit/market only.
+
+**Futures** form includes Reduce Only. **Spot** form uses BUY/SELL (buy = add, sell = reduce holdings).
 
 | Field | Description |
 |-------|-------------|

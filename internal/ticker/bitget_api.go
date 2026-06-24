@@ -720,3 +720,93 @@ func amendBitgetFuturesOrderPrice(ctx context.Context, client *http.Client, cfg 
 	_, err = bitgetPrivateRequest(ctx, client, cfg, http.MethodPost, path, string(bodyBytes))
 	return err
 }
+
+func placeBitgetSpotOrder(ctx context.Context, client *http.Client, cfg config, symbol, side, priceStr, sizeStr string, market bool) (openOrder, error) {
+	symbol = strings.ToUpper(strings.TrimSpace(symbol))
+	okSide := strings.ToLower(strings.TrimSpace(side))
+	switch strings.ToUpper(strings.TrimSpace(side)) {
+	case "BUY":
+		okSide = "buy"
+	case "SELL":
+		okSide = "sell"
+	}
+	if okSide != "buy" && okSide != "sell" {
+		return openOrder{}, fmt.Errorf("invalid side %s", side)
+	}
+	orderType := "limit"
+	if market {
+		orderType = "market"
+	}
+	bodyMap := map[string]string{
+		"symbol":    symbol,
+		"side":      okSide,
+		"orderType": orderType,
+		"size":      sizeStr,
+		"force":     "gtc",
+		"clientOid": newBitgetClientOID(),
+	}
+	if !market {
+		bodyMap["price"] = priceStr
+	}
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return openOrder{}, err
+	}
+	path := bitgetAPIPrefix + "/spot/trade/place-order"
+	respBody, err := bitgetPrivateRequest(ctx, client, cfg, http.MethodPost, path, string(bodyBytes))
+	if err != nil {
+		return openOrder{}, err
+	}
+	var data struct {
+		OrderId string `json:"orderId"`
+	}
+	if err := decodeBitgetJSON(respBody, &data); err != nil {
+		return openOrder{}, err
+	}
+	oid, _ := strconv.ParseInt(data.OrderId, 10, 64)
+	price, _ := strconv.ParseFloat(priceStr, 64)
+	sz, _ := strconv.ParseFloat(sizeStr, 64)
+	return openOrder{
+		Symbol:      symbol,
+		OrderID:     oid,
+		Side:        strings.ToUpper(okSide),
+		Type:        strings.ToUpper(orderType),
+		Price:       price,
+		OrigQty:     sz,
+		Status:      "LIVE",
+		TimeInForce: "GTC",
+		Time:        time.Now().UnixMilli(),
+	}, nil
+}
+
+func cancelBitgetSpotOrder(ctx context.Context, client *http.Client, cfg config, symbol string, orderID int64) error {
+	symbol = strings.ToUpper(strings.TrimSpace(symbol))
+	bodyMap := map[string]string{
+		"symbol":  symbol,
+		"orderId": strconv.FormatInt(orderID, 10),
+	}
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return err
+	}
+	path := bitgetAPIPrefix + "/spot/trade/cancel-order"
+	_, err = bitgetPrivateRequest(ctx, client, cfg, http.MethodPost, path, string(bodyBytes))
+	return err
+}
+
+func amendBitgetSpotOrderPrice(ctx context.Context, client *http.Client, cfg config, symbol string, orderID int64, newPrice string) error {
+	symbol = strings.ToUpper(strings.TrimSpace(symbol))
+	bodyMap := map[string]string{
+		"symbol":       symbol,
+		"orderId":      strconv.FormatInt(orderID, 10),
+		"newClientOid": newBitgetClientOID(),
+		"newPrice":     newPrice,
+	}
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return err
+	}
+	path := bitgetAPIPrefix + "/spot/trade/modify-order"
+	_, err = bitgetPrivateRequest(ctx, client, cfg, http.MethodPost, path, string(bodyBytes))
+	return err
+}

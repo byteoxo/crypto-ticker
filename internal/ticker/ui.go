@@ -44,6 +44,8 @@ type uiModel struct {
 	openOrdersCancel     context.CancelFunc
 	openOrdersData       []openOrder
 	openOrdersDataOffset int
+	openOrdersSpotData       []openOrder
+	openOrdersSpotDataOffset int
 	orderFormOpen        bool
 }
 

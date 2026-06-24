@@ -314,6 +314,238 @@ func amendBinanceFuturesOrder(ctx context.Context, client *http.Client, cfg conf
 	return nil
 }
 
+// ── Binance Spot Order Management ─────────────────────────────────────────────
+
+func placeBinanceSpotOrder(ctx context.Context, client *http.Client, cfg config, symbol, side, orderType, quantity, price string) (openOrder, error) {
+	symbol = strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(symbol), "_", ""))
+	query := url.Values{}
+	query.Set("symbol", symbol)
+	query.Set("side", strings.ToUpper(side))
+	query.Set("type", strings.ToUpper(orderType))
+	query.Set("quantity", quantity)
+	if strings.EqualFold(orderType, "LIMIT") {
+		query.Set("timeInForce", "GTC")
+		query.Set("price", price)
+	}
+	query.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
+	query.Set("recvWindow", strconv.FormatInt(int64(cfg.Timeout/time.Millisecond), 10))
+
+	endpoint, err := buildSignedURL(defaultSpotRESTBaseURL, "/api/v3/order", query, cfg.APISecret)
+	if err != nil {
+		return openOrder{}, fmt.Errorf("build binance spot order url: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
+	if err != nil {
+		return openOrder{}, fmt.Errorf("build binance spot order request: %w", err)
+	}
+	req.Header.Set("X-MBX-APIKEY", cfg.APIKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return openOrder{}, fmt.Errorf("binance spot order request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return openOrder{}, fmt.Errorf("read binance spot order response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return openOrder{}, fmt.Errorf("binance spot order status %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+
+	var payload struct {
+		Symbol      string `json:"symbol"`
+		OrderID     int64  `json:"orderId"`
+		Side        string `json:"side"`
+		Type        string `json:"type"`
+		Price       string `json:"price"`
+		OrigQty     string `json:"origQty"`
+		ExecutedQty string `json:"executedQty"`
+		Status      string `json:"status"`
+		TimeInForce string `json:"timeInForce"`
+		TransactTime int64 `json:"transactTime"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return openOrder{}, fmt.Errorf("decode binance spot order response: %w", err)
+	}
+
+	p, _ := strconv.ParseFloat(payload.Price, 64)
+	origQty, _ := strconv.ParseFloat(payload.OrigQty, 64)
+	filledQty, _ := strconv.ParseFloat(payload.ExecutedQty, 64)
+	return openOrder{
+		Symbol:      payload.Symbol,
+		OrderID:     payload.OrderID,
+		Side:        payload.Side,
+		Type:        payload.Type,
+		Price:       p,
+		OrigQty:     origQty,
+		FilledQty:   filledQty,
+		Status:      payload.Status,
+		TimeInForce: payload.TimeInForce,
+		Time:        payload.TransactTime,
+	}, nil
+}
+
+func cancelBinanceSpotOrder(ctx context.Context, client *http.Client, cfg config, symbol string, orderID int64) error {
+	symbol = strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(symbol), "_", ""))
+	query := url.Values{}
+	query.Set("symbol", symbol)
+	query.Set("orderId", strconv.FormatInt(orderID, 10))
+	query.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
+	query.Set("recvWindow", strconv.FormatInt(int64(cfg.Timeout/time.Millisecond), 10))
+
+	endpoint, err := buildSignedURL(defaultSpotRESTBaseURL, "/api/v3/order", query, cfg.APISecret)
+	if err != nil {
+		return fmt.Errorf("build binance spot cancel url: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("build binance spot cancel request: %w", err)
+	}
+	req.Header.Set("X-MBX-APIKEY", cfg.APIKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("binance spot cancel request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("binance spot cancel status %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+	return nil
+}
+
+func amendBinanceSpotOrder(ctx context.Context, client *http.Client, cfg config, symbol string, orderID int64, side, quantity, newPrice string) error {
+	symbol = strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(symbol), "_", ""))
+	query := url.Values{}
+	query.Set("symbol", symbol)
+	query.Set("cancelOrderId", strconv.FormatInt(orderID, 10))
+	query.Set("side", strings.ToUpper(side))
+	query.Set("type", "LIMIT")
+	query.Set("quantity", quantity)
+	query.Set("price", newPrice)
+	query.Set("cancelReplaceMode", "STOP_ON_FAILURE")
+	query.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
+	query.Set("recvWindow", strconv.FormatInt(int64(cfg.Timeout/time.Millisecond), 10))
+
+	endpoint, err := buildSignedURL(defaultSpotRESTBaseURL, "/api/v3/order/cancelReplace", query, cfg.APISecret)
+	if err != nil {
+		return fmt.Errorf("build binance spot amend url: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("build binance spot amend request: %w", err)
+	}
+	req.Header.Set("X-MBX-APIKEY", cfg.APIKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("binance spot amend request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("binance spot amend status %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+	return nil
+}
+
+func placeOrderForPanel(ctx context.Context, client *http.Client, cfg config, panel panelMode, sym, side, typeName, qty, price string, reduceOnly bool) (openOrder, error) {
+	market := strings.EqualFold(typeName, "MARKET")
+	if panel == panelSpot {
+		switch {
+		case cfg.isGate():
+			return placeGateSpotOrder(ctx, client, cfg, sym, side, qty, price, market)
+		case cfg.isOKX():
+			return placeOKXSpotOrder(ctx, client, cfg, sym, side, price, qty, market)
+		case cfg.isBitget():
+			return placeBitgetSpotOrder(ctx, client, cfg, sym, side, price, qty, market)
+		default:
+			return placeBinanceSpotOrder(ctx, client, cfg, sym, side, typeName, qty, price)
+		}
+	}
+	switch {
+	case cfg.isGate():
+		sizeVal, err := strconv.ParseInt(qty, 10, 64)
+		if err != nil {
+			return openOrder{}, fmt.Errorf("invalid gate futures size: %w", err)
+		}
+		if strings.EqualFold(side, "SELL") && sizeVal > 0 {
+			sizeVal = -sizeVal
+		}
+		if strings.EqualFold(side, "BUY") && sizeVal < 0 {
+			sizeVal = -sizeVal
+		}
+		return placeGateFuturesOrder(ctx, client, cfg, sym, sizeVal, price, market, reduceOnly)
+	case cfg.isOKX():
+		return placeOKXFuturesOrder(ctx, client, cfg, sym, side, price, qty, market, reduceOnly)
+	case cfg.isBitget():
+		return placeBitgetFuturesOrder(ctx, client, cfg, sym, side, price, qty, market, reduceOnly)
+	default:
+		return placeBinanceFuturesOrder(ctx, client, cfg, sym, side, typeName, qty, price, reduceOnly)
+	}
+}
+
+func cancelOrderForPanel(ctx context.Context, client *http.Client, cfg config, panel panelMode, order openOrder) error {
+	if panel == panelSpot {
+		switch {
+		case cfg.isGate():
+			return cancelGateSpotOrder(ctx, client, cfg, order.OrderID)
+		case cfg.isOKX():
+			return cancelOKXSpotOrder(ctx, client, cfg, order.Symbol, order.OrderID)
+		case cfg.isBitget():
+			return cancelBitgetSpotOrder(ctx, client, cfg, order.Symbol, order.OrderID)
+		default:
+			return cancelBinanceSpotOrder(ctx, client, cfg, order.Symbol, order.OrderID)
+		}
+	}
+	if cfg.isGate() {
+		if order.Type == "TRIGGER" {
+			return cancelGateFuturesPriceOrder(ctx, client, cfg, order.OrderID)
+		}
+		return cancelGateFuturesOrder(ctx, client, cfg, order.OrderID)
+	}
+	if cfg.isOKX() {
+		return cancelOKXFuturesOrder(ctx, client, cfg, order.Symbol, order.OrderID)
+	}
+	if cfg.isBitget() {
+		return cancelBitgetFuturesOrder(ctx, client, cfg, order.Symbol, order.OrderID)
+	}
+	return cancelBinanceFuturesOrder(ctx, client, cfg, order.Symbol, order.OrderID)
+}
+
+func amendOrderPriceForPanel(ctx context.Context, client *http.Client, cfg config, panel panelMode, order openOrder, newPrice, newQty string) error {
+	if panel == panelSpot {
+		switch {
+		case cfg.isGate():
+			return amendGateSpotOrderPrice(ctx, client, cfg, order.OrderID, newPrice)
+		case cfg.isOKX():
+			return amendOKXSpotOrderPrice(ctx, client, cfg, order.Symbol, order.OrderID, newPrice)
+		case cfg.isBitget():
+			return amendBitgetSpotOrderPrice(ctx, client, cfg, order.Symbol, order.OrderID, newPrice)
+		default:
+			return amendBinanceSpotOrder(ctx, client, cfg, order.Symbol, order.OrderID, order.Side, newQty, newPrice)
+		}
+	}
+	if cfg.isGate() {
+		return amendGateFuturesOrderPrice(ctx, client, cfg, order.OrderID, newPrice)
+	}
+	if cfg.isOKX() {
+		return amendOKXFuturesOrderPrice(ctx, client, cfg, order.Symbol, order.OrderID, newPrice)
+	}
+	if cfg.isBitget() {
+		return amendBitgetFuturesOrderPrice(ctx, client, cfg, order.Symbol, order.OrderID, newPrice)
+	}
+	return amendBinanceFuturesOrder(ctx, client, cfg, order.Symbol, order.OrderID, order.Side, newQty, newPrice)
+}
+
 // ── Gate.io Futures open orders ───────────────────────────────────────────────
 
 func fetchGateOpenOrders(ctx context.Context, client *http.Client, cfg config) ([]openOrder, error) {
@@ -521,7 +753,8 @@ func fetchOpenOrders(ctx context.Context, client *http.Client, cfg config) (futu
 		}
 		triggered, _ := fetchGatePriceTriggeredOrders(ctx, client, cfg)
 		f = append(f, triggered...)
-		return f, nil, nil
+		s, e2 := fetchGateSpotOpenOrders(ctx, client, cfg)
+		return f, s, e2
 	}
 	if cfg.isOKX() {
 		f, e := fetchOKXPendingOrders(ctx, client, cfg, "SWAP")
@@ -652,10 +885,11 @@ func (ui *uiModel) doOpenOrdersFetch(ctx context.Context) {
 func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 	ui.openOrdersTable.Clear()
 	ui.openOrdersData = nil
+	ui.openOrdersSpotData = nil
 	ui.openOrdersDataOffset = 0
+	ui.openOrdersSpotDataOffset = 0
 
 	row := 0
-	selectable := true
 	headers := []string{"SYMBOL", "SIDE", "TYPE", "PRICE", "QTY", "FILLED", "TIF", "STATUS", "TIME"}
 
 	setHeader := func(text string, col int) {
@@ -668,7 +902,7 @@ func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 
 	setCell := func(text, color string, r, col int) {
 		cell := tview.NewTableCell(ui.ooCell(color, text)).
-			SetSelectable(selectable).
+			SetSelectable(true).
 			SetBackgroundColor(tcell.ColorDefault).
 			SetExpansion(1)
 		ui.openOrdersTable.SetCell(r, col, cell)
@@ -738,6 +972,7 @@ func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 	switch {
 	case ui.cfg.isGate():
 		exchangeLabel = "Gate.io"
+		spotSectionTitle = "Gate.io Spot"
 	case ui.cfg.isOKX():
 		exchangeLabel = "OKX"
 		spotSectionTitle = "OKX Spot"
@@ -748,12 +983,13 @@ func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 	dataStart := renderSection(exchangeLabel+" Futures", futures)
 	ui.openOrdersData = futures
 	ui.openOrdersDataOffset = dataStart
+	spotStart := renderSection(spotSectionTitle, spot)
+	ui.openOrdersSpotData = spot
+	ui.openOrdersSpotDataOffset = spotStart
 	if len(futures) > 0 {
 		ui.openOrdersTable.Select(dataStart, 0)
-	}
-	if !ui.cfg.isGate() {
-		selectable = false
-		renderSection(spotSectionTitle, spot)
+	} else if len(spot) > 0 {
+		ui.openOrdersTable.Select(spotStart, 0)
 	}
 }
 
@@ -776,19 +1012,24 @@ func (ui *uiModel) ooCell(colorTag, text string) string {
 // ── Gate.io order management helpers ──────────────────────────────────────────
 
 func (ui *uiModel) resetOpenOrdersHint() {
-	ui.openOrdersHint.SetText("n new  d cancel  e edit  r refresh  Esc/u close")
+	ui.openOrdersHint.SetText("n new (Tab panel)  d cancel  e edit  r refresh  Esc/u close")
 }
 
-func (ui *uiModel) selectedOpenOrder() (openOrder, bool) {
-	if len(ui.openOrdersData) == 0 {
-		return openOrder{}, false
-	}
+func (ui *uiModel) selectedOpenOrder() (openOrder, panelMode, bool) {
 	row, _ := ui.openOrdersTable.GetSelection()
-	idx := row - ui.openOrdersDataOffset
-	if idx < 0 || idx >= len(ui.openOrdersData) {
-		return openOrder{}, false
+	if len(ui.openOrdersData) > 0 && ui.openOrdersDataOffset > 0 {
+		idx := row - ui.openOrdersDataOffset
+		if idx >= 0 && idx < len(ui.openOrdersData) {
+			return ui.openOrdersData[idx], panelFutures, true
+		}
 	}
-	return ui.openOrdersData[idx], true
+	if len(ui.openOrdersSpotData) > 0 && ui.openOrdersSpotDataOffset > 0 {
+		idx := row - ui.openOrdersSpotDataOffset
+		if idx >= 0 && idx < len(ui.openOrdersSpotData) {
+			return ui.openOrdersSpotData[idx], panelSpot, true
+		}
+	}
+	return openOrder{}, panelFutures, false
 }
 
 func (ui *uiModel) closeOrderForm() {
@@ -798,7 +1039,8 @@ func (ui *uiModel) closeOrderForm() {
 }
 
 func (ui *uiModel) showNewOrderForm() {
-	_, _, _, _, _, chartSymbol, _, _, _, _, _, _, _, _, _, _, _, _, _ := ui.state.snapshot()
+	_, _, _, _, _, chartSymbol, _, _, _, _, _, _, _, _, _, _, _, panel, _ := ui.state.snapshot()
+	isSpot := panel == panelSpot
 
 	selectedStyle := tcell.StyleDefault.
 		Foreground(tcell.ColorWhite).
@@ -814,12 +1056,21 @@ func (ui *uiModel) showNewOrderForm() {
 	form := tview.NewForm()
 	symbolLabel := "Symbol"
 	if ui.cfg.isGate() {
-		symbolLabel = "Contract"
+		if isSpot {
+			symbolLabel = "Pair"
+		} else {
+			symbolLabel = "Contract"
+		}
 	}
 	form.AddInputField(symbolLabel, chartSymbol, 20, nil, nil)
 
+	sideOptions := []string{"BUY (long)", "SELL (short)"}
+	if isSpot {
+		sideOptions = []string{"BUY", "SELL"}
+	}
+
 	formReady := false
-	form.AddDropDown("Side", []string{"BUY (long)", "SELL (short)"}, 0, nil)
+	form.AddDropDown("Side", sideOptions, 0, nil)
 	form.GetFormItem(1).(*tview.DropDown).SetListStyles(unselectedStyle, selectedStyle)
 
 	form.AddDropDown("Type", []string{"LIMIT", "MARKET"}, 0, func(option string, _ int) {
@@ -839,14 +1090,20 @@ func (ui *uiModel) showNewOrderForm() {
 	form.AddInputField("Price", "", 20, numFilter, nil)
 
 	sizeInputFilter := numFilter
-	if ui.cfg.isGate() {
+	if ui.cfg.isGate() && !isSpot {
 		sizeInputFilter = func(_ string, ch rune) bool {
 			return ch >= '0' && ch <= '9'
 		}
 	}
 	form.AddInputField("Size", "1", 15, sizeInputFilter, nil)
-	form.AddDropDown("Reduce Only", []string{"No", "Yes"}, 0, nil)
-	form.GetFormItem(5).(*tview.DropDown).SetListStyles(unselectedStyle, selectedStyle)
+
+	sizeFieldIdx := 4
+	reduceFieldIdx := -1
+	if !isSpot {
+		form.AddDropDown("Reduce Only", []string{"No", "Yes"}, 0, nil)
+		reduceFieldIdx = 5
+		form.GetFormItem(reduceFieldIdx).(*tview.DropDown).SetListStyles(unselectedStyle, selectedStyle)
+	}
 	formReady = true
 
 	form.AddButton("Submit", func() {
@@ -857,9 +1114,12 @@ func (ui *uiModel) showNewOrderForm() {
 		sideIdx, _ := form.GetFormItem(1).(*tview.DropDown).GetCurrentOption()
 		_, typeName := form.GetFormItem(2).(*tview.DropDown).GetCurrentOption()
 		priceStr := strings.TrimSpace(form.GetFormItem(3).(*tview.InputField).GetText())
-		rawSize := strings.TrimSpace(form.GetFormItem(4).(*tview.InputField).GetText())
-		reduceIdx, _ := form.GetFormItem(5).(*tview.DropDown).GetCurrentOption()
-		reduceOnly := reduceIdx == 1
+		rawSize := strings.TrimSpace(form.GetFormItem(sizeFieldIdx).(*tview.InputField).GetText())
+		reduceOnly := false
+		if reduceFieldIdx >= 0 {
+			reduceIdx, _ := form.GetFormItem(reduceFieldIdx).(*tview.DropDown).GetCurrentOption()
+			reduceOnly = reduceIdx == 1
+		}
 		market := typeName == "MARKET"
 
 		if !market {
@@ -867,7 +1127,7 @@ func (ui *uiModel) showNewOrderForm() {
 				return
 			}
 		}
-		if ui.cfg.isGate() {
+		if ui.cfg.isGate() && !isSpot {
 			if _, err := strconv.ParseInt(rawSize, 10, 64); err != nil {
 				return
 			}
@@ -884,21 +1144,7 @@ func (ui *uiModel) showNewOrderForm() {
 		ui.openOrdersHint.SetText("Placing order...")
 		go func() {
 			client := &http.Client{Timeout: ui.cfg.Timeout}
-			var err error
-			switch {
-			case ui.cfg.isGate():
-				sizeVal, _ := strconv.ParseInt(rawSize, 10, 64)
-				if sideIdx == 1 {
-					sizeVal = -sizeVal
-				}
-				_, err = placeGateFuturesOrder(context.Background(), client, ui.cfg, sym, sizeVal, priceStr, market, reduceOnly)
-			case ui.cfg.isOKX():
-				_, err = placeOKXFuturesOrder(context.Background(), client, ui.cfg, sym, side, priceStr, rawSize, market, reduceOnly)
-			case ui.cfg.isBitget():
-				_, err = placeBitgetFuturesOrder(context.Background(), client, ui.cfg, sym, side, priceStr, rawSize, market, reduceOnly)
-			default:
-				_, err = placeBinanceFuturesOrder(context.Background(), client, ui.cfg, sym, side, typeName, rawSize, priceStr, reduceOnly)
-			}
+			_, err := placeOrderForPanel(context.Background(), client, ui.cfg, panel, sym, side, typeName, rawSize, priceStr, reduceOnly)
 			if err != nil {
 				ui.app.QueueUpdateDraw(func() {
 					ui.renderOpenOrdersError("place order: " + err.Error())
@@ -912,18 +1158,28 @@ func (ui *uiModel) showNewOrderForm() {
 	})
 
 	form.AddButton("Cancel", func() { ui.closeOrderForm() })
-	form.SetBorder(true).SetTitle(" New Order ").SetTitleAlign(tview.AlignCenter)
+	title := " New Futures Order "
+	formHeight := 17
+	if isSpot {
+		title = " New Spot Order "
+		formHeight = 15
+	}
+	form.SetBorder(true).SetTitle(title).SetTitleAlign(tview.AlignCenter)
 	form.SetBackgroundColor(tcell.ColorDefault)
 
 	hint := tview.NewTextView().SetDynamicColors(true)
 	hint.SetBackgroundColor(tcell.ColorDefault)
-	hint.SetText("[gray]Tab/Enter next field  Shift+Tab back  Esc cancel\nDropDown: Enter open, ↑↓ select, Enter confirm[-]")
+	hintText := "[gray]Tab/Enter next field  Shift+Tab back  Esc cancel\nDropDown: Enter open, ↑↓ select, Enter confirm[-]"
+	if isSpot {
+		hintText = "[gray]Tab switches futures/spot panel before n  |  Tab/Enter next  Shift+Tab back  Esc cancel\nDropDown: Enter open, ↑↓ select, Enter confirm[-]"
+	}
+	hint.SetText(hintText)
 
 	overlay := tview.NewFlex().
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(form, 17, 0, true).
+			AddItem(form, formHeight, 0, true).
 			AddItem(hint, 2, 0, false).
 			AddItem(nil, 0, 1, false), 50, 0, true).
 		AddItem(nil, 0, 1, false)
@@ -934,7 +1190,7 @@ func (ui *uiModel) showNewOrderForm() {
 }
 
 func (ui *uiModel) showCancelOrderConfirm() {
-	order, ok := ui.selectedOpenOrder()
+	order, panel, ok := ui.selectedOpenOrder()
 	if !ok {
 		return
 	}
@@ -951,20 +1207,7 @@ func (ui *uiModel) showCancelOrderConfirm() {
 			ui.openOrdersHint.SetText("Cancelling order...")
 			go func() {
 				client := &http.Client{Timeout: ui.cfg.Timeout}
-				var err error
-				if ui.cfg.isGate() {
-					if order.Type == "TRIGGER" {
-						err = cancelGateFuturesPriceOrder(context.Background(), client, ui.cfg, order.OrderID)
-					} else {
-						err = cancelGateFuturesOrder(context.Background(), client, ui.cfg, order.OrderID)
-					}
-				} else if ui.cfg.isOKX() {
-					err = cancelOKXFuturesOrder(context.Background(), client, ui.cfg, order.Symbol, order.OrderID)
-				} else if ui.cfg.isBitget() {
-					err = cancelBitgetFuturesOrder(context.Background(), client, ui.cfg, order.Symbol, order.OrderID)
-				} else {
-					err = cancelBinanceFuturesOrder(context.Background(), client, ui.cfg, order.Symbol, order.OrderID)
-				}
+				err := cancelOrderForPanel(context.Background(), client, ui.cfg, panel, order)
 				if err != nil {
 					ui.app.QueueUpdateDraw(func() {
 						ui.renderOpenOrdersError("cancel order: " + err.Error())
@@ -986,7 +1229,7 @@ func (ui *uiModel) showCancelOrderConfirm() {
 }
 
 func (ui *uiModel) showEditPriceForm() {
-	order, ok := ui.selectedOpenOrder()
+	order, panel, ok := ui.selectedOpenOrder()
 	if !ok {
 		return
 	}
@@ -1000,7 +1243,8 @@ func (ui *uiModel) showEditPriceForm() {
 
 	form := tview.NewForm()
 	form.AddInputField("New Price", format.CompactFloat(order.Price), 20, numFilter, nil)
-	if !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget() {
+	showQty := !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget()
+	if showQty {
 		form.AddInputField("New Quantity", format.CompactFloat(order.OrigQty), 20, numFilter, nil)
 	}
 	form.AddButton("Submit", func() {
@@ -1008,8 +1252,8 @@ func (ui *uiModel) showEditPriceForm() {
 		if _, err := strconv.ParseFloat(newPrice, 64); err != nil {
 			return
 		}
-		var newQty string
-		if !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget() {
+		newQty := format.CompactFloat(order.OrigQty)
+		if showQty {
 			newQty = strings.TrimSpace(form.GetFormItem(1).(*tview.InputField).GetText())
 			if _, err := strconv.ParseFloat(newQty, 64); err != nil {
 				return
@@ -1021,16 +1265,7 @@ func (ui *uiModel) showEditPriceForm() {
 
 		go func() {
 			client := &http.Client{Timeout: ui.cfg.Timeout}
-			var err error
-			if ui.cfg.isGate() {
-				err = amendGateFuturesOrderPrice(context.Background(), client, ui.cfg, order.OrderID, newPrice)
-			} else if ui.cfg.isOKX() {
-				err = amendOKXFuturesOrderPrice(context.Background(), client, ui.cfg, order.Symbol, order.OrderID, newPrice)
-			} else if ui.cfg.isBitget() {
-				err = amendBitgetFuturesOrderPrice(context.Background(), client, ui.cfg, order.Symbol, order.OrderID, newPrice)
-			} else {
-				err = amendBinanceFuturesOrder(context.Background(), client, ui.cfg, order.Symbol, order.OrderID, order.Side, newQty, newPrice)
-			}
+			err := amendOrderPriceForPanel(context.Background(), client, ui.cfg, panel, order, newPrice, newQty)
 			if err != nil {
 				ui.app.QueueUpdateDraw(func() {
 					ui.renderOpenOrdersError("amend order: " + err.Error())
@@ -1054,7 +1289,7 @@ func (ui *uiModel) showEditPriceForm() {
 	form.SetBackgroundColor(tcell.ColorDefault)
 
 	formHeight := 9
-	if !ui.cfg.isGate() && !ui.cfg.isOKX() && !ui.cfg.isBitget() {
+	if showQty {
 		formHeight = 11
 	}
 

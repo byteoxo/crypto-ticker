@@ -737,3 +737,275 @@ func amendGateFuturesOrderPrice(ctx context.Context, client *http.Client, cfg co
 	}
 	return nil
 }
+
+func gateCurrencyPair(symbol string) string {
+	symbol = strings.ToUpper(strings.TrimSpace(symbol))
+	if strings.Contains(symbol, "_") {
+		return symbol
+	}
+	for _, quote := range []string{"USDT", "USDC", "USD"} {
+		if strings.HasSuffix(symbol, quote) && len(symbol) > len(quote) {
+			return strings.TrimSuffix(symbol, quote) + "_" + quote
+		}
+	}
+	return symbol
+}
+
+func fetchGateSpotOpenOrders(ctx context.Context, client *http.Client, cfg config) ([]openOrder, error) {
+	const path = "/api/v4/spot/open_orders"
+	ts := time.Now().Unix()
+
+	query := url.Values{}
+	query.Set("status", "open")
+	queryStr := query.Encode()
+
+	sig := buildGateSignature(cfg.APISecret, "GET", path, queryStr, "", ts)
+
+	parsed, err := url.Parse(spotRESTBaseURL(cfg))
+	if err != nil {
+		return nil, fmt.Errorf("parse gate spot rest base: %w", err)
+	}
+	parsed.Path = path
+	parsed.RawQuery = queryStr
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("build gate spot open orders request: %w", err)
+	}
+	req.Header.Set("KEY", cfg.APIKey)
+	req.Header.Set("SIGN", sig)
+	req.Header.Set("Timestamp", strconv.FormatInt(ts, 10))
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("gate spot open orders request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read gate spot open orders response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("gate spot open orders status %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+
+	var payload []struct {
+		ID           string  `json:"id"`
+		CurrencyPair string  `json:"currency_pair"`
+		Side         string  `json:"side"`
+		Type         string  `json:"type"`
+		Amount       string  `json:"amount"`
+		Price        string  `json:"price"`
+		Left         string  `json:"left"`
+		CreateTime   float64 `json:"create_time"`
+		Status       string  `json:"status"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("decode gate spot open orders: %w", err)
+	}
+
+	orders := make([]openOrder, 0, len(payload))
+	for _, item := range payload {
+		price, _ := strconv.ParseFloat(item.Price, 64)
+		origQty, _ := strconv.ParseFloat(item.Amount, 64)
+		left, _ := strconv.ParseFloat(item.Left, 64)
+		filled := origQty - left
+		if filled < 0 {
+			filled = 0
+		}
+		oid, _ := strconv.ParseInt(item.ID, 10, 64)
+		orders = append(orders, openOrder{
+			Symbol:      item.CurrencyPair,
+			OrderID:     oid,
+			Side:        strings.ToUpper(item.Side),
+			Type:        strings.ToUpper(item.Type),
+			Price:       price,
+			OrigQty:     origQty,
+			FilledQty:   filled,
+			Status:      strings.ToUpper(item.Status),
+			TimeInForce: "GTC",
+			Time:        int64(item.CreateTime * 1000),
+		})
+	}
+	return orders, nil
+}
+
+// placeGateSpotOrder places a LIMIT or MARKET spot order on Gate.io.
+func placeGateSpotOrder(ctx context.Context, client *http.Client, cfg config, pair, side, amount, price string, market bool) (openOrder, error) {
+	const path = "/api/v4/spot/orders"
+	pair = gateCurrencyPair(pair)
+
+	orderType := "limit"
+	if market {
+		orderType = "market"
+	}
+	bodyMap := map[string]interface{}{
+		"currency_pair": pair,
+		"side":          strings.ToLower(side),
+		"type":          orderType,
+		"amount":        amount,
+		"time_in_force": "gtc",
+	}
+	if market {
+		bodyMap["time_in_force"] = "ioc"
+	} else {
+		bodyMap["price"] = price
+	}
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return openOrder{}, fmt.Errorf("marshal gate spot order body: %w", err)
+	}
+
+	ts := time.Now().Unix()
+	sig := buildGateSignature(cfg.APISecret, "POST", path, "", string(bodyBytes), ts)
+
+	parsed, err := url.Parse(spotRESTBaseURL(cfg))
+	if err != nil {
+		return openOrder{}, fmt.Errorf("parse gate spot rest base: %w", err)
+	}
+	parsed.Path = path
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, parsed.String(), bytes.NewReader(bodyBytes))
+	if err != nil {
+		return openOrder{}, fmt.Errorf("build gate spot order request: %w", err)
+	}
+	req.Header.Set("KEY", cfg.APIKey)
+	req.Header.Set("SIGN", sig)
+	req.Header.Set("Timestamp", strconv.FormatInt(ts, 10))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return openOrder{}, fmt.Errorf("gate spot order request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return openOrder{}, fmt.Errorf("read gate spot order response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return openOrder{}, fmt.Errorf("gate spot order status %s: %s", resp.Status, strings.TrimSpace(string(respBody)))
+	}
+
+	var payload struct {
+		ID           string  `json:"id"`
+		CurrencyPair string  `json:"currency_pair"`
+		Side         string  `json:"side"`
+		Type         string  `json:"type"`
+		Amount       string  `json:"amount"`
+		Price        string  `json:"price"`
+		Left         string  `json:"left"`
+		Status       string  `json:"status"`
+		CreateTime   float64 `json:"create_time"`
+	}
+	if err := json.Unmarshal(respBody, &payload); err != nil {
+		return openOrder{}, fmt.Errorf("decode gate spot order response: %w", err)
+	}
+
+	p, _ := strconv.ParseFloat(payload.Price, 64)
+	origQty, _ := strconv.ParseFloat(payload.Amount, 64)
+	left, _ := strconv.ParseFloat(payload.Left, 64)
+	filled := origQty - left
+	if filled < 0 {
+		filled = 0
+	}
+	oid, _ := strconv.ParseInt(payload.ID, 10, 64)
+	respType := strings.ToUpper(payload.Type)
+	if market {
+		respType = "MARKET"
+	}
+
+	return openOrder{
+		Symbol:      payload.CurrencyPair,
+		OrderID:     oid,
+		Side:        strings.ToUpper(payload.Side),
+		Type:        respType,
+		Price:       p,
+		OrigQty:     origQty,
+		FilledQty:   filled,
+		Status:      strings.ToUpper(payload.Status),
+		TimeInForce: "GTC",
+		Time:        int64(payload.CreateTime * 1000),
+	}, nil
+}
+
+func cancelGateSpotOrder(ctx context.Context, client *http.Client, cfg config, orderID int64) error {
+	path := fmt.Sprintf("/api/v4/spot/orders/%d", orderID)
+	ts := time.Now().Unix()
+	sig := buildGateSignature(cfg.APISecret, "DELETE", path, "", "", ts)
+
+	parsed, err := url.Parse(spotRESTBaseURL(cfg))
+	if err != nil {
+		return fmt.Errorf("parse gate spot rest base: %w", err)
+	}
+	parsed.Path = path
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, parsed.String(), nil)
+	if err != nil {
+		return fmt.Errorf("build gate spot cancel request: %w", err)
+	}
+	req.Header.Set("KEY", cfg.APIKey)
+	req.Header.Set("SIGN", sig)
+	req.Header.Set("Timestamp", strconv.FormatInt(ts, 10))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("gate spot cancel request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("gate spot cancel status %s: %s", resp.Status, strings.TrimSpace(string(respBody)))
+	}
+	return nil
+}
+
+func amendGateSpotOrderPrice(ctx context.Context, client *http.Client, cfg config, orderID int64, newPrice string) error {
+	path := fmt.Sprintf("/api/v4/spot/orders/%d", orderID)
+
+	bodyMap := map[string]interface{}{
+		"price": newPrice,
+	}
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return fmt.Errorf("marshal gate spot amend body: %w", err)
+	}
+
+	ts := time.Now().Unix()
+	sig := buildGateSignature(cfg.APISecret, "PATCH", path, "", string(bodyBytes), ts)
+
+	parsed, err := url.Parse(spotRESTBaseURL(cfg))
+	if err != nil {
+		return fmt.Errorf("parse gate spot rest base: %w", err)
+	}
+	parsed.Path = path
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, parsed.String(), bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("build gate spot amend request: %w", err)
+	}
+	req.Header.Set("KEY", cfg.APIKey)
+	req.Header.Set("SIGN", sig)
+	req.Header.Set("Timestamp", strconv.FormatInt(ts, 10))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("gate spot amend request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("gate spot amend status %s: %s", resp.Status, strings.TrimSpace(string(respBody)))
+	}
+	return nil
+}
