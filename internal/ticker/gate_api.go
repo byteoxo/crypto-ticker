@@ -520,16 +520,24 @@ func fetchGatePositions(ctx context.Context, client *http.Client, cfg config) ([
 
 // ── Gate.io Limit Order Management ───────────────────────────────────────────
 
-// placeGateFuturesLimitOrder places a limit order on Gate.io futures.
+// placeGateFuturesOrder places a LIMIT or MARKET order on Gate.io futures.
 // size: positive for buy/long, negative for sell/short.
-func placeGateFuturesLimitOrder(ctx context.Context, client *http.Client, cfg config, contract string, size int64, price string) (openOrder, error) {
+func placeGateFuturesOrder(ctx context.Context, client *http.Client, cfg config, contract string, size int64, price string, market, reduceOnly bool) (openOrder, error) {
 	const path = "/api/v4/futures/usdt/orders"
 
 	bodyMap := map[string]interface{}{
 		"contract": contract,
 		"size":     size,
-		"price":    price,
-		"tif":      "gtc",
+	}
+	if market {
+		bodyMap["price"] = "0"
+		bodyMap["tif"] = "ioc"
+	} else {
+		bodyMap["price"] = price
+		bodyMap["tif"] = "gtc"
+	}
+	if reduceOnly {
+		bodyMap["reduce_only"] = true
 	}
 	bodyBytes, err := json.Marshal(bodyMap)
 	if err != nil {
@@ -597,11 +605,16 @@ func placeGateFuturesLimitOrder(ctx context.Context, client *http.Client, cfg co
 		side = "SELL"
 	}
 
+	orderType := "LIMIT"
+	if market {
+		orderType = "MARKET"
+	}
+
 	return openOrder{
 		Symbol:      payload.Contract,
 		OrderID:     payload.ID,
 		Side:        side,
-		Type:        "LIMIT",
+		Type:        orderType,
 		Price:       p,
 		OrigQty:     origQty,
 		FilledQty:   filled,

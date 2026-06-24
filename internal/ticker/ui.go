@@ -84,10 +84,12 @@ func newUI(cfg config, loc *time.Location, state *appState, changeChart func(int
 		{"u", "Open open orders panel (requires API key)"},
 		{"n", "New order (in open orders panel)"},
 		{"d", "Cancel selected order (in open orders panel)"},
-		{"e", "Edit order (in open orders panel)"},
+		{"e", "Edit limit order price (in open orders panel)"},
+		{"Tab / Enter", "Next field (in order form)"},
+		{"Shift+Tab", "Previous field (in order form)"},
 		{"q", "Quit"},
 		{"Ctrl+C", "Quit"},
-		{"Esc", "Close help / modal / order book"},
+		{"Esc", "Close help / modal / order book / order form"},
 	}
 	helpRowSlice := helpRows[:]
 	if !cfg.chartsEnabled() {
@@ -133,7 +135,7 @@ func newUI(cfg config, loc *time.Location, state *appState, changeChart func(int
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(helpFrame, 17, 0, false).
+			AddItem(helpFrame, 19, 0, false).
 			AddItem(nil, 0, 1, false), 64, 0, true).
 		AddItem(nil, 0, 1, false)
 

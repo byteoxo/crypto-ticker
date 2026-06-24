@@ -554,7 +554,7 @@ func fetchOKXPendingOrders(ctx context.Context, client *http.Client, cfg config,
 	return out, nil
 }
 
-func placeOKXFuturesLimitOrder(ctx context.Context, client *http.Client, cfg config, compactSymbol string, side string, priceStr, qtyStr string) (openOrder, error) {
+func placeOKXFuturesOrder(ctx context.Context, client *http.Client, cfg config, compactSymbol string, side string, priceStr, qtyStr string, market, reduceOnly bool) (openOrder, error) {
 	instID := symbol.OKXSwapInstID(compactSymbol)
 	okSide := strings.ToLower(strings.TrimSpace(side))
 	switch strings.ToUpper(strings.TrimSpace(side)) {
@@ -566,13 +566,22 @@ func placeOKXFuturesLimitOrder(ctx context.Context, client *http.Client, cfg con
 	if okSide != "buy" && okSide != "sell" {
 		return openOrder{}, fmt.Errorf("invalid side %s", side)
 	}
+	ordType := "limit"
+	if market {
+		ordType = "market"
+	}
 	bodyMap := map[string]string{
 		"instId":  instID,
 		"tdMode":  "cross",
 		"side":    okSide,
-		"ordType": "limit",
-		"px":      priceStr,
+		"ordType": ordType,
 		"sz":      qtyStr,
+	}
+	if !market {
+		bodyMap["px"] = priceStr
+	}
+	if reduceOnly {
+		bodyMap["reduceOnly"] = "true"
 	}
 	bodyBytes, err := json.Marshal(bodyMap)
 	if err != nil {

@@ -2,7 +2,7 @@
 
 [English README](./README.md)
 
-`crypto-ticker` 是一个使用 Go 编写的加密货币终端行情工具，支持合约与现货实时监控以及 K 线图展示，界面基于 `tview/tcell`。同时支持 **Binance** 和 **Gate.io**。
+`crypto-ticker` 是一个使用 Go 编写的加密货币终端行情工具，支持合约与现货实时监控以及 K 线图展示，界面基于 `tview/tcell`。同时支持 **Binance**、**Gate.io**、**OKX** 和 **Bitget**。
 
 ## 预览
 
@@ -10,7 +10,7 @@
 
 ## 功能
 
-- 通过 WebSocket 实时订阅行情，支持 **Binance** 和 **Gate.io**（合约 + 现货）
+- 通过 WebSocket 实时订阅行情，支持 **Binance**、**Gate.io**、**OKX** 和 **Bitget**（合约 + 现货）
 - 实时更新的 K 线图（1h / 2h / 4h / 1d / 3d），支持键盘切换 symbol 和周期
 - 图表下方显示成交量柱、EMA20/50、RSI14、布林带（BB）和 MACD
 - 行情表显示 24h 涨跌幅、未平仓量（含 ▲/▼ 变化）、多空比、资金费率
@@ -31,8 +31,37 @@
 | `Down` / `Right` | 切换到下一个图表 symbol |
 | `i` | 循环切换图表周期（1h → 2h → 4h → 1d → 3d） |
 | `o` | 打开当前 symbol 的订单簿 |
-| `Esc` | 关闭帮助 / 模态框 / 订单簿 |
+| `u` | 打开挂单面板（需配置 API Key） |
+| `n` | 新建订单（在挂单面板内） |
+| `d` | 撤销选中订单（在挂单面板内） |
+| `e` | 修改限价单价格（在挂单面板内） |
+| `Esc` | 关闭帮助 / 弹窗 / 订单簿 / 订单表单 |
 | `q` / `Ctrl+C` | 退出 |
+
+### 订单表单（按 `u` 后按 `n`）
+
+需配置 API 凭证。各交易所合约下单使用同一套表单：
+
+| 字段 | 说明 |
+|------|------|
+| Symbol / Contract | 交易对（Gate.io 用 `BTC_USDT` 格式） |
+| Side | BUY（做多）/ SELL（做空） |
+| Type | LIMIT（限价）/ MARKET（市价） |
+| Price | 限价单必填；选 MARKET 时可忽略 |
+| Size | Gate.io：合约张数（整数）；其他：数量（小数） |
+| Reduce Only | **No** = 开仓或加仓；**Yes** = 只减仓（平仓 / 减杠杆） |
+
+表单内键盘操作：
+
+| 按键 | 功能 |
+|------|------|
+| `Tab` / `Enter` | 下一个字段 |
+| `Shift+Tab` | 上一个字段 |
+| `Enter`（在下拉框上） | 展开选项；`↑`/`↓` 选择；`Enter` 确认 |
+| `Esc` | 关闭表单，不提交 |
+| `Enter`（在 Submit 上） | 提交下单 |
+
+TUI 仅支持**限价**和**市价**两种类型（不含止损 / 止盈 / Post-Only 等）。
 
 ## 安装
 

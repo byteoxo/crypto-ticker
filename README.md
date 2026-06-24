@@ -31,8 +31,37 @@
 | `Down` / `Right` | Next chart symbol |
 | `i` | Cycle chart interval (1h → 2h → 4h → 1d → 3d) |
 | `o` | Open order book for current symbol |
-| `Esc` | Close help / modal / order book |
+| `u` | Open open orders panel (requires API key) |
+| `n` | New order (in open orders panel) |
+| `d` | Cancel selected order (in open orders panel) |
+| `e` | Edit limit order price (in open orders panel) |
+| `Esc` | Close help / modal / order book / order form |
 | `q` / `Ctrl+C` | Quit |
+
+### Order form (press `u`, then `n`)
+
+Requires API credentials. All supported exchanges use the same futures order form:
+
+| Field | Description |
+|-------|-------------|
+| Symbol / Contract | Trading pair (Gate.io uses `BTC_USDT` format) |
+| Side | BUY (long) or SELL (short) |
+| Type | LIMIT or MARKET |
+| Price | Required for LIMIT; ignored when MARKET is selected |
+| Size | Gate.io: contracts (integer). Others: quantity (decimal) |
+| Reduce Only | **No** = open or add to position; **Yes** = reduce only (close / de-leverage) |
+
+Form navigation:
+
+| Key | Action |
+|-----|--------|
+| `Tab` / `Enter` | Next field |
+| `Shift+Tab` | Previous field |
+| `Enter` (on dropdown) | Open list; `↑`/`↓` to select; `Enter` to confirm |
+| `Esc` | Close form without submitting |
+| `Enter` (on Submit) | Place order |
+
+Supported order types are **limit** and **market** only (no stop / take-profit / post-only in the TUI).
 
 ## Installation
 

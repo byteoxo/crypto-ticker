@@ -620,7 +620,7 @@ func newBitgetClientOID() string {
 	return "ticker-" + hex.EncodeToString(b)
 }
 
-func placeBitgetFuturesLimitOrder(ctx context.Context, client *http.Client, cfg config, symbol, side, priceStr, sizeStr string) (openOrder, error) {
+func placeBitgetFuturesOrder(ctx context.Context, client *http.Client, cfg config, symbol, side, priceStr, sizeStr string, market, reduceOnly bool) (openOrder, error) {
 	symbol = strings.ToUpper(strings.TrimSpace(symbol))
 	okSide := strings.ToLower(strings.TrimSpace(side))
 	switch strings.ToUpper(strings.TrimSpace(side)) {
@@ -632,17 +632,28 @@ func placeBitgetFuturesLimitOrder(ctx context.Context, client *http.Client, cfg 
 	if okSide != "buy" && okSide != "sell" {
 		return openOrder{}, fmt.Errorf("invalid side %s", side)
 	}
+	orderType := "limit"
+	if market {
+		orderType = "market"
+	}
+	reduceOnlyVal := "NO"
+	if reduceOnly {
+		reduceOnlyVal = "YES"
+	}
 	bodyMap := map[string]string{
 		"symbol":      symbol,
 		"productType": bitgetProductTypeFutures,
 		"marginMode":  "crossed",
 		"marginCoin":  "USDT",
 		"side":        okSide,
-		"orderType":   "limit",
-		"price":       priceStr,
+		"orderType":   orderType,
 		"size":        sizeStr,
 		"force":       "gtc",
+		"reduceOnly":  reduceOnlyVal,
 		"clientOid":   newBitgetClientOID(),
+	}
+	if !market {
+		bodyMap["price"] = priceStr
 	}
 	bodyBytes, err := json.Marshal(bodyMap)
 	if err != nil {
@@ -666,7 +677,7 @@ func placeBitgetFuturesLimitOrder(ctx context.Context, client *http.Client, cfg 
 		Symbol:      symbol,
 		OrderID:     oid,
 		Side:        strings.ToUpper(okSide),
-		Type:        "LIMIT",
+		Type:        strings.ToUpper(orderType),
 		Price:       price,
 		OrigQty:     sz,
 		Status:      "LIVE",
