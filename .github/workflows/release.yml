@@ -171,3 +171,54 @@ jobs:
             --field content="$(base64 -w0 < "$RUNNER_TEMP/crypto-ticker.rb")" \
             --field sha="$FILE_SHA" \
             --jq '.content.html_url'
+
+      - name: Update Scoop manifest
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"   # strip leading 'v'
+
+          CHECKSUMS=$(curl -sL \
+            "https://github.com/${{ github.repository }}/releases/download/${TAG}/checksums.txt")
+
+          SHA_WINDOWS_AMD64=$(echo "$CHECKSUMS" | awk '/windows_amd64\.zip/ {print $1}')
+
+          BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg url "${BASE_URL}/crypto-ticker_windows_amd64.zip" \
+            --arg hash "$SHA_WINDOWS_AMD64" \
+            '{
+              version: $version,
+              description: "Terminal-based crypto futures/spot price ticker supporting Binance and Gate.io",
+              homepage: "https://github.com/${{ github.repository }}",
+              license: "MIT",
+              architecture: {
+                "64bit": { url: $url, hash: $hash }
+              },
+              bin: ["crypto-ticker.exe", ["crypto-ticker.exe", "crypto"]],
+              checkver: { github: "https://github.com/${{ github.repository }}" },
+              autoupdate: {
+                architecture: {
+                  "64bit": {
+                    url: "https://github.com/${{ github.repository }}/releases/download/v$version/crypto-ticker_windows_amd64.zip"
+                  }
+                },
+                hash: {
+                  url: "https://github.com/${{ github.repository }}/releases/download/v$version/checksums.txt"
+                }
+              }
+            }' > "$RUNNER_TEMP/crypto-ticker.json"
+
+          # Get current file SHA (empty if the manifest does not exist yet)
+          FILE_SHA=$(gh api repos/byteoxo/scoop-bucket/contents/bucket/crypto-ticker.json \
+            --jq '.sha' 2>/dev/null || true)
+
+          gh api repos/byteoxo/scoop-bucket/contents/bucket/crypto-ticker.json \
+            --method PUT \
+            --field message="Update crypto-ticker to ${TAG}" \
+            --field content="$(base64 -w0 < "$RUNNER_TEMP/crypto-ticker.json")" \
+            ${FILE_SHA:+--field sha="$FILE_SHA"} \
+            --jq '.content.html_url'
