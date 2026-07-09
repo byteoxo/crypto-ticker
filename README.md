@@ -74,6 +74,13 @@ brew tap byteoxo/tap
 brew install crypto-ticker
 ```
 
+### Scoop (Windows)
+
+```powershell
+scoop bucket add byteoxo https://github.com/byteoxo/scoop-bucket
+scoop install byteoxo/crypto-ticker
+```
+
 ### Pre-built binaries
 
 Download the latest release for your platform from the [Releases](https://github.com/byteoxo/crypto-ticker/releases) page.

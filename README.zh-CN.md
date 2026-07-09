@@ -74,6 +74,13 @@ brew tap byteoxo/tap
 brew install crypto-ticker
 ```
 
+### Scoop（Windows）
+
+```powershell
+scoop bucket add byteoxo https://github.com/byteoxo/scoop-bucket
+scoop install byteoxo/crypto-ticker
+```
+
 ### 下载预编译二进制
 
 从 [Releases](https://github.com/byteoxo/crypto-ticker/releases) 页面下载对应平台的压缩包。
