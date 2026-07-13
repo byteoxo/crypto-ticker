@@ -7,6 +7,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	// Embed IANA timezone database so time.LoadLocation works on Windows
+	// and other systems that do not ship zoneinfo files.
+	_ "time/tzdata"
 )
 
 func CompactFloat(value float64) string {
