@@ -1,7 +1,8 @@
 default: build
 
 build:
-    go build -o crypto ./cmd/crypto-ticker
+    # -tags timetzdata embeds IANA zones (Asia/Shanghai etc.) for Windows/Alpine.
+    go build -tags timetzdata -o crypto ./cmd/crypto-ticker
 
 run: build
     ./crypto

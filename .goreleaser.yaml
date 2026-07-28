@@ -10,6 +10,9 @@ builds:
   - main: ./cmd/crypto-ticker
     env:
       - CGO_ENABLED=0
+    # Embed IANA zoneinfo so tz = "Asia/Shanghai" works on Windows / minimal images.
+    tags:
+      - timetzdata
     goos:
       - linux
       - darwin

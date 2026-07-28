@@ -5,7 +5,8 @@ BINARY := crypto
 all: build
 
 build:
-	go build -o $(BINARY) ./cmd/crypto-ticker
+	# -tags timetzdata embeds IANA zones (Asia/Shanghai etc.) for Windows/Alpine.
+	go build -tags timetzdata -o $(BINARY) ./cmd/crypto-ticker
 
 run: build
 	./$(BINARY)
