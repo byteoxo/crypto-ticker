@@ -76,6 +76,15 @@ brew install crypto-ticker
 
 ### Scoop（Windows）
 
+若尚未安装 Scoop，请打开**非管理员** PowerShell（5.1 或更高版本）并执行：
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+```
+
+然后安装 crypto-ticker：
+
 ```powershell
 scoop bucket add byteoxo https://github.com/byteoxo/scoop-bucket
 scoop install byteoxo/crypto-ticker
