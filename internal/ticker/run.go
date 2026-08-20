@@ -103,33 +103,28 @@ func Run() error {
 }
 
 func run(ctx context.Context, client *http.Client, cfg config, loc *time.Location, state *appState) error {
-	if len(cfg.Symbols) > 0 && cfg.chartsEnabled() {
-		if err := loadChartHistory(ctx, client, cfg, state); err != nil {
-			state.setError(fmt.Sprintf("chart init failed: %v", err))
-		}
-	}
-	if cfg.hasAccountAuth() && len(cfg.Symbols) > 0 {
-		if err := loadInitialPositions(ctx, client, cfg, state); err != nil {
-			state.setAccountError(fmt.Sprintf("positions init failed: %v", err))
-		}
-	}
 	spotRESTBase := spotRESTBaseURL(cfg)
 	spotWSBase := spotWSBaseURL(cfg)
 	_ = spotWSBase
 
+	// Spot row skeletons are set up synchronously (no network).
 	if cfg.hasSpot() {
 		state.setSpotRows(symbol.SpotSymbolsToTickers(cfg.SpotSymbols))
-		if err := loadInitialSpotBalances(ctx, client, cfg, state); err != nil {
-			state.setSpotAccountError(fmt.Sprintf("spot balances init failed: %v", err))
-		}
-		if len(cfg.SpotSymbols) > 0 {
-			spotTickers := symbol.SpotSymbolsToTickers(cfg.SpotSymbols)
-			if cfg.chartsEnabled() && len(spotTickers) > 0 && (cfg.DefaultPanel == string(panelSpot) || len(cfg.Symbols) == 0) {
-				if err := loadChartHistoryForSymbol(ctx, client, spotRESTBase, panelSpot, spotTickers[0], cfg.ChartLimit, state); err != nil {
-					state.setSpotError(fmt.Sprintf("spot chart init failed: %v", err))
-				}
-			}
-		}
+	}
+
+	// Set loading states so the UI shows "loading..." before data arrives.
+	// All REST init loads happen asynchronously so the TUI starts immediately.
+	if len(cfg.Symbols) > 0 && cfg.chartsEnabled() {
+		state.setError("loading: chart history")
+	}
+	if cfg.hasAccountAuth() && len(cfg.Symbols) > 0 {
+		state.setAccountError("loading: positions")
+	}
+	if cfg.hasSpot() && cfg.hasAccountAuth() {
+		state.setSpotAccountError("loading: spot balances")
+	}
+	if cfg.hasSpot() && cfg.chartsEnabled() && len(cfg.SpotSymbols) > 0 && (cfg.DefaultPanel == string(panelSpot) || len(cfg.Symbols) == 0) {
+		state.setSpotError("loading: spot chart")
 	}
 
 	getChartSymbol := func() string {
@@ -306,6 +301,46 @@ func run(ctx context.Context, client *http.Client, cfg config, loc *time.Locatio
 				default:
 				}
 			}
+		}()
+	}
+
+	// Async initial REST loads — run concurrently so the TUI starts immediately.
+	if len(cfg.Symbols) > 0 && cfg.chartsEnabled() {
+		go func() {
+			if err := loadChartHistory(ctx, client, cfg, state); err != nil {
+				state.setError(fmt.Sprintf("chart init failed: %v", err))
+			} else {
+				state.clearError()
+			}
+			ui.requestDraw()
+		}()
+	}
+	if cfg.hasAccountAuth() && len(cfg.Symbols) > 0 {
+		go func() {
+			if err := loadInitialPositions(ctx, client, cfg, state); err != nil {
+				state.setAccountError(fmt.Sprintf("positions init failed: %v", err))
+			}
+			ui.requestDraw()
+		}()
+	}
+	if cfg.hasSpot() {
+		go func() {
+			if cfg.hasAccountAuth() {
+				if err := loadInitialSpotBalances(ctx, client, cfg, state); err != nil {
+					state.setSpotAccountError(fmt.Sprintf("spot balances init failed: %v", err))
+				}
+			}
+			if len(cfg.SpotSymbols) > 0 {
+				spotTickers := symbol.SpotSymbolsToTickers(cfg.SpotSymbols)
+				if cfg.chartsEnabled() && len(spotTickers) > 0 && (cfg.DefaultPanel == string(panelSpot) || len(cfg.Symbols) == 0) {
+					if err := loadChartHistoryForSymbol(ctx, client, spotRESTBase, panelSpot, spotTickers[0], cfg.ChartLimit, state); err != nil {
+						state.setSpotError(fmt.Sprintf("spot chart init failed: %v", err))
+					} else {
+						state.clearSpotError()
+					}
+				}
+			}
+			ui.requestDraw()
 		}()
 	}
 

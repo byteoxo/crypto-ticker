@@ -462,7 +462,11 @@ func (ui *uiModel) refresh() {
 
 	statusText := "[green]ok[-]"
 	if marketStatus != "" {
-		statusText = ui.colorize("red", marketStatus)
+		if len(marketStatus) > 8 && marketStatus[:8] == "loading:" {
+			statusText = ui.colorize("yellow", marketStatus[9:])
+		} else {
+			statusText = ui.colorize("red", marketStatus)
+		}
 	}
 	accountStatus := ui.accountStatusText(accountEnabled, accountStatusError, accountUpdate)
 	transport := fmt.Sprintf("retry delay=%s | futures ws=%s | futures rest=%s | spot ws=%s | spot rest=%s", ui.cfg.RetryDelay, ui.cfg.WSBase, ui.cfg.RESTBase, defaultSpotWSBaseURL, defaultSpotRESTBaseURL)
@@ -497,6 +501,9 @@ func (ui *uiModel) accountStatusText(accountEnabled bool, accountError string, a
 		return ui.colorize("gray", "disabled")
 	}
 	if accountError != "" {
+		if len(accountError) > 8 && accountError[:8] == "loading:" {
+			return ui.colorize("yellow", accountError[9:])
+		}
 		return ui.colorize("red", accountError)
 	}
 	if accountLastUpdate.IsZero() {
