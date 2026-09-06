@@ -67,6 +67,18 @@ Supported order types are **limit** and **market** only (no stop / take-profit /
 
 ## Installation
 
+### Install script (Linux)
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/byteoxo/crypto-ticker/main/install.sh | sh
+```
+
+The script supports x86-64 and ARM64, verifies the release checksum, and installs `crypto-ticker` to `~/.local/bin` without requiring root access. To use a different directory or install a specific release:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/byteoxo/crypto-ticker/main/install.sh | INSTALL_DIR="$HOME/bin" VERSION=v1.9.2 sh
+```
+
 ### Homebrew (macOS / Linux)
 
 ```bash
