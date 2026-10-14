@@ -20,39 +20,41 @@ var embeddedDefaultConfig []byte
 const embeddedConfigLabel = "embedded:config.example.binance.toml"
 
 type config struct {
-	Exchange      string
-	Symbols       []string
-	SpotSymbols   []string
-	ChartSymbol   string
-	ChartLimit    int
-	DefaultPanel  string
-	Timeout       time.Duration
-	TZ            string
-	RESTBase      string
-	WSBase        string
-	NoColor       bool
-	RetryDelay    time.Duration
-	APIKey        string
-	APISecret     string
-	APIPassphrase string
-	ConfigPath    string
+	Exchange          string
+	Symbols           []string
+	SpotSymbols       []string
+	ChartSymbol       string
+	ChartLimit        int
+	DefaultPanel      string
+	Timeout           time.Duration
+	TZ                string
+	RESTBase          string
+	WSBase            string
+	NoColor           bool
+	ShowQuoteCurrency bool
+	RetryDelay        time.Duration
+	APIKey            string
+	APISecret         string
+	APIPassphrase     string
+	ConfigPath        string
 }
 
 type rawConfig struct {
-	Exchange      string   `toml:"exchange"`
-	Symbols       []string `toml:"symbols"`
-	SpotSymbols   []string `toml:"spot_symbols"`
-	ChartLimit    int      `toml:"chart_limit"`
-	DefaultPanel  string   `toml:"default_panel"`
-	Timeout       string   `toml:"timeout"`
-	TZ            string   `toml:"tz"`
-	RESTBase      string   `toml:"rest_base"`
-	WSBase        string   `toml:"ws_base"`
-	NoColor       bool     `toml:"no_color"`
-	RetryDelay    string   `toml:"retry_delay"`
-	APIKey        string   `toml:"api_key"`
-	APISecret     string   `toml:"api_secret"`
-	APIPassphrase string   `toml:"api_passphrase"`
+	Exchange          string   `toml:"exchange"`
+	Symbols           []string `toml:"symbols"`
+	SpotSymbols       []string `toml:"spot_symbols"`
+	ChartLimit        int      `toml:"chart_limit"`
+	DefaultPanel      string   `toml:"default_panel"`
+	Timeout           string   `toml:"timeout"`
+	TZ                string   `toml:"tz"`
+	RESTBase          string   `toml:"rest_base"`
+	WSBase            string   `toml:"ws_base"`
+	NoColor           bool     `toml:"no_color"`
+	ShowQuoteCurrency *bool    `toml:"show_quote_currency"`
+	RetryDelay        string   `toml:"retry_delay"`
+	APIKey            string   `toml:"api_key"`
+	APISecret         string   `toml:"api_secret"`
+	APIPassphrase     string   `toml:"api_passphrase"`
 }
 
 func (cfg config) hasAccountAuth() bool {
@@ -295,23 +297,29 @@ func loadConfig() (config, error) {
 		wsBase = normalizeLegacyBinanceFuturesMarketWSBase(wsBase)
 	}
 
+	showQuoteCurrency := true
+	if raw.ShowQuoteCurrency != nil {
+		showQuoteCurrency = *raw.ShowQuoteCurrency
+	}
+
 	return config{
-		Exchange:      exchange,
-		Symbols:       symbols,
-		SpotSymbols:   spotSymbols,
-		ChartSymbol:   chartSymbol,
-		ChartLimit:    chartLimit,
-		DefaultPanel:  string(defaultPanel),
-		Timeout:       timeout,
-		TZ:            tz,
-		RESTBase:      restBase,
-		WSBase:        wsBase,
-		NoColor:       raw.NoColor || os.Getenv("NO_COLOR") != "",
-		RetryDelay:    retryDelay,
-		APIKey:        apiKey,
-		APISecret:     apiSecret,
-		APIPassphrase: apiPassphrase,
-		ConfigPath:    path,
+		Exchange:          exchange,
+		Symbols:           symbols,
+		SpotSymbols:       spotSymbols,
+		ChartSymbol:       chartSymbol,
+		ChartLimit:        chartLimit,
+		DefaultPanel:      string(defaultPanel),
+		Timeout:           timeout,
+		TZ:                tz,
+		RESTBase:          restBase,
+		WSBase:            wsBase,
+		NoColor:           raw.NoColor || os.Getenv("NO_COLOR") != "",
+		ShowQuoteCurrency: showQuoteCurrency,
+		RetryDelay:        retryDelay,
+		APIKey:            apiKey,
+		APISecret:         apiSecret,
+		APIPassphrase:     apiPassphrase,
+		ConfigPath:        path,
 	}, nil
 }
 

@@ -149,6 +149,7 @@ Example configs are included in [configs/](./configs/):
 | `rest_base` | *(Optional)* REST API base URL — defaults to exchange default |
 | `ws_base` | *(Optional)* WebSocket base URL — defaults to exchange default |
 | `no_color` | Disable TUI colors |
+| `show_quote_currency` | *(Optional)* Show full symbol labels (default `true`). Set `false` for base assets only, e.g. `BTCUSDT`, `BTC_USDT`, or `BTC-USDT-SWAP` → `BTC`, across all exchanges. Display only; subscriptions and orders still use full symbols. |
 | `api_key` | *(Optional)* API key — enables account features |
 | `api_secret` | *(Optional)* API secret — required with `api_key` |
 

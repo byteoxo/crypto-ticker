@@ -356,16 +356,16 @@ func placeBinanceSpotOrder(ctx context.Context, client *http.Client, cfg config,
 	}
 
 	var payload struct {
-		Symbol      string `json:"symbol"`
-		OrderID     int64  `json:"orderId"`
-		Side        string `json:"side"`
-		Type        string `json:"type"`
-		Price       string `json:"price"`
-		OrigQty     string `json:"origQty"`
-		ExecutedQty string `json:"executedQty"`
-		Status      string `json:"status"`
-		TimeInForce string `json:"timeInForce"`
-		TransactTime int64 `json:"transactTime"`
+		Symbol       string `json:"symbol"`
+		OrderID      int64  `json:"orderId"`
+		Side         string `json:"side"`
+		Type         string `json:"type"`
+		Price        string `json:"price"`
+		OrigQty      string `json:"origQty"`
+		ExecutedQty  string `json:"executedQty"`
+		Status       string `json:"status"`
+		TimeInForce  string `json:"timeInForce"`
+		TransactTime int64  `json:"transactTime"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return openOrder{}, fmt.Errorf("decode binance spot order response: %w", err)
@@ -953,7 +953,7 @@ func (ui *uiModel) renderOpenOrders(futures, spot []openOrder) {
 			}
 			timeStr := time.Unix(o.Time/1000, 0).Format("01-02 15:04")
 
-			setCell(o.Symbol, "[white]", row, 0)
+			setCell(ui.cfg.displaySymbol(o.Symbol), "[white]", row, 0)
 			setCell(strings.ToUpper(o.Side), sideColor, row, 1)
 			setCell(strings.ToUpper(o.Type), "[white]", row, 2)
 			setCell(priceStr, "[white]", row, 3)
@@ -1197,7 +1197,7 @@ func (ui *uiModel) showCancelOrderConfirm() {
 
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("Cancel order #%d?\n%s %s @ %s",
-			order.OrderID, order.Side, order.Symbol, format.CompactFloat(order.Price))).
+			order.OrderID, order.Side, ui.cfg.displaySymbol(order.Symbol), format.CompactFloat(order.Price))).
 		AddButtons([]string{"Yes", "No"}).
 		SetDoneFunc(func(_ int, label string) {
 			ui.closeOrderForm()
@@ -1284,7 +1284,7 @@ func (ui *uiModel) showEditPriceForm() {
 	})
 	form.SetBorder(true).
 		SetTitle(fmt.Sprintf(" Edit #%d %s %s @ %s ",
-			order.OrderID, order.Side, order.Symbol, format.CompactFloat(order.Price))).
+			order.OrderID, order.Side, ui.cfg.displaySymbol(order.Symbol), format.CompactFloat(order.Price))).
 		SetTitleAlign(tview.AlignCenter)
 	form.SetBackgroundColor(tcell.ColorDefault)
 

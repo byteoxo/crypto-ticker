@@ -19,6 +19,10 @@ tz = "Asia/Shanghai"
 # rest_base = "https://api.bitget.com"
 # ws_base   = "wss://ws.bitget.com/v2/ws/public"
 
+# Show the quote currency in symbol labels (false: BTCUSDT / BTC_USDT → BTC).
+# Optional; defaults to true. Affects display only, across all exchanges.
+show_quote_currency = true
+
 no_color = false
 retry_delay = "2s"
 

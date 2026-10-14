@@ -27,6 +27,10 @@ tz = "Asia/Shanghai"
 #
 # Legacy ws_base "wss://fstream.binance.com" is auto-mapped to .../market for ticker/kline streams.
 
+# Show the quote currency in symbol labels (false: BTCUSDT / BTC_USDT → BTC).
+# Optional; defaults to true. Affects display only, across all exchanges.
+show_quote_currency = true
+
 no_color = false
 retry_delay = "2s"
 

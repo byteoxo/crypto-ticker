@@ -219,7 +219,7 @@ func (ui *uiModel) doOrderBookFetch(ctx context.Context, baseURL, symbol string,
 
 func (ui *uiModel) renderOrderBook(bids, asks [][]string, symbol string) {
 	ui.orderBookTable.Clear()
-	ui.orderBookFrame.SetTitle(fmt.Sprintf("Order Book - %s", symbol))
+	ui.orderBookFrame.SetTitle(fmt.Sprintf("Order Book - %s", ui.cfg.displaySymbol(symbol)))
 
 	row := 0
 

@@ -137,6 +137,7 @@ go build -o crypto-ticker ./cmd/crypto-ticker
 | `rest_base` | *（可选）* REST API 基地址 — 不填则使用 exchange 默认值 |
 | `ws_base` | *（可选）* WebSocket 基地址 — 不填则使用 exchange 默认值 |
 | `no_color` | 是否禁用 TUI 颜色 |
+| `show_quote_currency` | *（可选）* 是否显示 symbol 中的计价币，默认 `true`。设为 `false` 时仅显示基础资产，例如 `BTCUSDT`、`BTC_USDT` 或 `BTC-USDT-SWAP` → `BTC`，适用于所有交易所。仅影响显示，订阅和下单仍使用完整 symbol。 |
 | `api_key` | *（可选）* API Key — 启用账户功能 |
 | `api_secret` | *（可选）* API Secret — 与 `api_key` 配套使用 |
 

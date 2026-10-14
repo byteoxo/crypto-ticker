@@ -19,6 +19,10 @@ tz = "UTC"
 # rest_base = "https://www.okx.com"
 # ws_base   = "wss://ws.okx.com:8443/ws/v5/public"
 
+# Show the quote currency in symbol labels (false: BTCUSDT / BTC_USDT → BTC).
+# Optional; defaults to true. Affects display only, across all exchanges.
+show_quote_currency = true
+
 no_color = false
 retry_delay = "2s"
 

@@ -13,40 +13,40 @@ import (
 )
 
 type uiModel struct {
-	app                  *tview.Application
-	pages                *tview.Pages
-	header               *tview.TextView
-	status               *tview.TextView
-	table                *tview.Table
-	positions            *tview.Table
-	chart                *tview.TextView
-	footer               *tview.TextView
-	help                 tview.Primitive
-	cfg                  config
-	loc                  *time.Location
-	state                *appState
-	changeChart          func(int)
-	changeInterval       func()
-	helpOpen             bool
-	orderBook            tview.Primitive
-	orderBookFrame       *tview.Frame
-	orderBookTable       *tview.Table
-	orderBookOpen        bool
-	orderBookCancel      context.CancelFunc
-	orderBookSymbol      string
-	orderBookBaseURL     string
-	orderBookPanel       panelMode
-	openOrders           tview.Primitive
-	openOrdersFrame      *tview.Frame
-	openOrdersTable      *tview.Table
-	openOrdersHint       *tview.TextView
-	openOrdersOpen       bool
-	openOrdersCancel     context.CancelFunc
-	openOrdersData       []openOrder
-	openOrdersDataOffset int
+	app                      *tview.Application
+	pages                    *tview.Pages
+	header                   *tview.TextView
+	status                   *tview.TextView
+	table                    *tview.Table
+	positions                *tview.Table
+	chart                    *tview.TextView
+	footer                   *tview.TextView
+	help                     tview.Primitive
+	cfg                      config
+	loc                      *time.Location
+	state                    *appState
+	changeChart              func(int)
+	changeInterval           func()
+	helpOpen                 bool
+	orderBook                tview.Primitive
+	orderBookFrame           *tview.Frame
+	orderBookTable           *tview.Table
+	orderBookOpen            bool
+	orderBookCancel          context.CancelFunc
+	orderBookSymbol          string
+	orderBookBaseURL         string
+	orderBookPanel           panelMode
+	openOrders               tview.Primitive
+	openOrdersFrame          *tview.Frame
+	openOrdersTable          *tview.Table
+	openOrdersHint           *tview.TextView
+	openOrdersOpen           bool
+	openOrdersCancel         context.CancelFunc
+	openOrdersData           []openOrder
+	openOrdersDataOffset     int
 	openOrdersSpotData       []openOrder
 	openOrdersSpotDataOffset int
-	orderFormOpen        bool
+	orderFormOpen            bool
 }
 
 func newUI(cfg config, loc *time.Location, state *appState, changeChart func(int), changeInterval func()) *uiModel {
@@ -444,8 +444,8 @@ func (ui *uiModel) refresh() {
 	headerBody := fmt.Sprintf(
 		"panel: %s\nfutures: %s\nspot: %s\nconfig: %s\nnow: %s\nstarted: %s\nmarket update: %s",
 		panelName,
-		strings.Join(ui.cfg.Symbols, ","),
-		strings.Join(ui.cfg.SpotSymbols, ","),
+		ui.cfg.displaySymbols(ui.cfg.Symbols),
+		ui.cfg.displaySymbols(ui.cfg.SpotSymbols),
 		ui.cfg.ConfigPath,
 		format.Time(time.Now(), ui.loc, false),
 		format.Time(startedAt, ui.loc, false),
@@ -570,7 +570,7 @@ func (ui *uiModel) renderTable(rows []rowState) {
 		}
 		spark := buildSparkline(row.PriceHistory)
 
-		ui.table.SetCell(i+1, 0, tview.NewTableCell(row.Symbol).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.table.SetCell(i+1, 0, tview.NewTableCell(ui.cfg.displaySymbol(row.Symbol)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.table.SetCell(i+1, 1, tview.NewTableCell(ui.colorByChange(row.Change, price)).SetExpansion(1).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.table.SetCell(i+1, 2, tview.NewTableCell(ui.colorByChange(pct24hChange, pct24h)).SetExpansion(1).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.table.SetCell(i+1, 3, tview.NewTableCell(ui.colorByChange(oiDir, oiText)).SetExpansion(1).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
@@ -627,7 +627,7 @@ func (ui *uiModel) renderPositions(positions []positionState, accountEnabled boo
 			mode = fmt.Sprintf("%s %sx", mode, position.Leverage)
 		}
 
-		ui.positions.SetCell(i+1, 0, tview.NewTableCell(position.Symbol).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.positions.SetCell(i+1, 0, tview.NewTableCell(ui.cfg.displaySymbol(position.Symbol)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.positions.SetCell(i+1, 1, tview.NewTableCell(ui.colorBySide(position.Side, position.Side)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.positions.SetCell(i+1, 2, tview.NewTableCell(format.CompactFloat(position.Size)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.positions.SetCell(i+1, 3, tview.NewTableCell(format.CompactFloat(position.EntryPrice)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
@@ -664,7 +664,7 @@ func (ui *uiModel) renderSpotTable(rows []rowState) {
 			pct24hChange = -1
 		}
 		spark := buildSparkline(row.PriceHistory)
-		ui.table.SetCell(i+1, 0, tview.NewTableCell(row.Symbol).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
+		ui.table.SetCell(i+1, 0, tview.NewTableCell(ui.cfg.displaySymbol(row.Symbol)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.table.SetCell(i+1, 1, tview.NewTableCell(ui.colorByChange(row.Change, price)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.table.SetCell(i+1, 2, tview.NewTableCell(ui.colorByChange(pct24hChange, pct24h)).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
 		ui.table.SetCell(i+1, 3, tview.NewTableCell(spark).SetSelectable(false).SetBackgroundColor(tcell.ColorDefault))
@@ -728,7 +728,7 @@ func (ui *uiModel) renderChart(candles []klineCandle, symbol, interval string) {
 	if interval == "" {
 		interval = defaultChartInterval
 	}
-	title := fmt.Sprintf("%s Chart - %s", strings.ToUpper(interval), symbol)
+	title := fmt.Sprintf("%s Chart - %s", strings.ToUpper(interval), ui.cfg.displaySymbol(symbol))
 	if len(candles) >= 15 {
 		closes := make([]float64, len(candles))
 		for i, c := range candles {
@@ -812,8 +812,8 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 
 	fmt.Printf("mode: ws\npanel: %s\nfutures symbols: %s\nspot symbols: %s\nconfig: %s\nstarted: %s\nfutures update: %s\nspot update: %s\n",
 		panel,
-		strings.Join(cfg.Symbols, ","),
-		strings.Join(cfg.SpotSymbols, ","),
+		cfg.displaySymbols(cfg.Symbols),
+		cfg.displaySymbols(cfg.SpotSymbols),
 		cfg.ConfigPath,
 		format.Time(startedAt, loc, false),
 		format.OptionalTime(lastUpdate, loc),
@@ -850,7 +850,7 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 			if price == "" {
 				price = "-"
 			}
-			fmt.Printf("%-14s %-18s %-18s %-26s %-26s\n", row.Symbol, price, formatDelta(row), format.Epoch(row.ExchangeTime, loc), format.OptionalTime(row.LocalTime, loc))
+			fmt.Printf("%-14s %-18s %-18s %-26s %-26s\n", cfg.displaySymbol(row.Symbol), price, formatDelta(row), format.Epoch(row.ExchangeTime, loc), format.OptionalTime(row.LocalTime, loc))
 		}
 	}
 	if len(spotRows) > 0 {
@@ -861,7 +861,7 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 			if price == "" {
 				price = "-"
 			}
-			fmt.Printf("%-14s %-18s %-18s %-26s %-26s\n", row.Symbol, price, formatDelta(row), format.Epoch(row.ExchangeTime, loc), format.OptionalTime(row.LocalTime, loc))
+			fmt.Printf("%-14s %-18s %-18s %-26s %-26s\n", cfg.displaySymbol(row.Symbol), price, formatDelta(row), format.Epoch(row.ExchangeTime, loc), format.OptionalTime(row.LocalTime, loc))
 		}
 	}
 	if len(positions) > 0 {
@@ -872,7 +872,7 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 			if position.Leverage != "" {
 				mode = fmt.Sprintf("%s %sx", mode, position.Leverage)
 			}
-			fmt.Printf("%-12s %-8s %-12s %-12s %-12s %-12s %-12s %-12s\n", position.Symbol, position.Side, format.CompactFloat(position.Size), format.CompactFloat(position.EntryPrice), format.CompactFloat(position.MarkPrice), format.SignedCompactFloat(position.UnrealizedPnL), format.OptionalCompactFloat(position.LiquidationPrice), mode)
+			fmt.Printf("%-12s %-8s %-12s %-12s %-12s %-12s %-12s %-12s\n", cfg.displaySymbol(position.Symbol), position.Side, format.CompactFloat(position.Size), format.CompactFloat(position.EntryPrice), format.CompactFloat(position.MarkPrice), format.SignedCompactFloat(position.UnrealizedPnL), format.OptionalCompactFloat(position.LiquidationPrice), mode)
 		}
 	}
 	if len(spotBalances) > 0 {
@@ -883,6 +883,6 @@ func printSnapshot(cfg config, loc *time.Location, state *appState) {
 		}
 	}
 	if len(chart) > 0 {
-		fmt.Printf("\n%s chart (%s):\n%s\n", strings.ToUpper(chartInterval), chartSymbol, stripTViewTags(buildChartText(chart, true)))
+		fmt.Printf("\n%s chart (%s):\n%s\n", strings.ToUpper(chartInterval), cfg.displaySymbol(chartSymbol), stripTViewTags(buildChartText(chart, true)))
 	}
 }
